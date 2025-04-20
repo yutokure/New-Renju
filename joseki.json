@@ -1,0 +1,132 @@
+[
+  {
+    "name": "花月 (Kagetsu)",
+    "moves": [ [7, 7], [6, 7], [6, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "浦月 (Hogetsu)",
+    "moves": [ [7, 7], [6, 8], [8, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "名月 (Meigetsu)",
+    "moves": [ [7, 7], [6, 8], [9, 6] ],
+    "is_shukei": true
+  },
+  {
+    "name": "雲月 (Ungetsu)",
+    "moves": [ [7, 7], [6, 8], [7, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "寒星 (Kansei)",
+    "moves": [ [7, 7], [6, 7], [5, 7] ],
+    "is_shukei": true
+  },
+  {
+    "name": "渓月 (Keigetsu)",
+    "moves": [ [7, 7], [6, 7], [5, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "疎星 (Sosei)",
+    "moves": [ [7, 7], [6, 7], [5, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "残月 (Zangetsu)",
+    "moves": [ [7, 7], [6, 7], [6, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "雨月 (Ugetsu)",
+    "moves": [ [7, 7], [6, 7], [7, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "金星 (Kinsei)",
+    "moves": [ [7, 7], [6, 7], [7, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "松月 (Shogetsu)",
+    "moves": [ [7, 7], [6, 7], [8, 7] ],
+    "is_shukei": true
+  },
+  {
+    "name": "丘月 (Kyugetsu)",
+    "moves": [ [7, 7], [6, 7], [8, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "新月 (Shingetsu)",
+    "moves": [ [7, 7], [6, 7], [8, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "瑞星 (Zuisei)",
+    "moves": [ [7, 7], [6, 7], [9, 7] ],
+    "is_shukei": true
+  },
+  {
+    "name": "山月 (Sangetsu)",
+    "moves": [ [7, 7], [6, 7], [9, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "遊星 (Yusei)",
+    "moves": [ [7, 7], [6, 7], [9, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "長星 (Chosei)",
+    "moves": [ [7, 7], [6, 8], [5, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "峡月 (Kyougetsu)",
+    "moves": [ [7, 7], [6, 8], [6, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "恒星 (Kousei)",
+    "moves": [ [7, 7], [6, 8], [7, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "水月 (Suigetsu)",
+    "moves": [ [7, 7], [6, 8], [8, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "流星 (Ryusei)",
+    "moves": [ [7, 7], [6, 8], [9, 9] ],
+    "is_shukei": true
+  },
+  {
+    "name": "嵐月 (Rangetsu)",
+    "moves": [ [7, 7], [6, 8], [9, 8] ],
+    "is_shukei": true
+  },
+  {
+    "name": "銀月 (Gingetsu)",
+    "moves": [ [7, 7], [6, 8], [8, 7] ],
+    "is_shukei": true
+  },
+  {
+    "name": "明星 (Myojo)",
+    "moves": [ [7, 7], [6, 8], [9, 7] ],
+    "is_shukei": true
+  },
+  {
+    "name": "斜月 (Shagetsu)",
+    "moves": [ [7, 7], [6, 8], [8, 6] ],
+    "is_shukei": true
+  },
+  {
+    "name": "彗星 (Suisei)",
+    "moves": [ [7, 7], [6, 8], [9, 5] ],
+    "is_shukei": true
+  }
+] 
