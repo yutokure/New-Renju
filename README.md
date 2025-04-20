@@ -51,8 +51,8 @@ pip install pygame numpy
 
 1. このリポジトリをクローンまたはダウンロードします。
    ```bash
-   git clone 【リポジトリのURL】
-   cd 【リポジトリのフォルダ名】
+   git clone https://github.com/yutokure/New-Renju.git
+   cd New-Renju-main
    ```
 2. 必要なライブラリをインストールします。
    ```bash
