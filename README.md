@@ -165,4 +165,4 @@ This software is released under the MIT License, see LICENSE.
 
 ## 連絡先・フィードバック
 
-バグ報告、改善提案、感想などは **[https://github.com/yutokure/New-Renju/issues](Issues)** までお寄せください。
+バグ報告、改善提案、感想などは **[https://github.com/yutokure/New-Renju/issues](https://github.com/yutokure/New-Renju/issues)** までお寄せください。
