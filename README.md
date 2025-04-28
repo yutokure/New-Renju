@@ -43,8 +43,9 @@ pip install pygame numpy
 
 ### 実行ファイル (.exe) 版
 
-1. `dist/Gomoku` フォルダにある `Gomoku.exe` をダウンロードします。
-2. ダウンロードした `Gomoku.exe` をダブルクリックして実行します。
+1. [GitHubのURL](https://github.com/yutokure/New-Renju/)にアクセスするか、[ここ](https://github.com/yutokure/New-Renju/releases/tag/new-renju-windows)をクリックしてダウンロードします。
+2. zipファイルを解凍します。
+3. 中にある、 `Gomoku.exe` をダブルクリックして実行します。
    * *注意:* Windows SmartScreen などで「提供元不明のアプリ」として警告が表示される場合がありますが、問題ありません。「詳細情報」->「実行」を選択してください。
 
 ### ソースコード版
