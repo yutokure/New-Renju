@@ -150,8 +150,7 @@ class AsyncAI:
         expired = time.perf_counter() - task.started >= task.budget + self.startup_grace
         exited = task.process.poll() is not None
         if exited or expired:
-            # A fast worker can finish between throttled reads. Never confuse
-            # an unread final atomic result with a worker that produced none.
+            # Fast workers can finish between throttled progress reads.
             self._read_result(task, force=True)
         done = bool(task.result and task.result.get('done'))
         if not (expired or exited or done):
