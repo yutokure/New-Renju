@@ -48,7 +48,7 @@ Very Hardの証明付き正解所要時間: 四三VCF21.92ms、白の禁手ト�
 | 通常5秒 vs Hard1.5秒 | 16-0-0 | 100% | 80.6〜100% | 0 |
 | Hard1.5秒 vs旧Hard1.5秒 | Hard 5-6-5 | 45.5%（決着11局） | 21.3〜72.0% | 0 |
 
-同一開局単位で再集計すると、VH vs Hardは有利5群/同点3群、旧Hardは有利7群/同点1群、通常設定は有利8群。これは小さく目的選択された8開局の結果であり、Elo差/人間上級者/全開局への普遍的主張をしない。開局符号Wilsonも `strength-summary.json` に記録する。
+同一開局単位で再集計すると、VH vs Hardは有利5群/同点3群、旧Hardは有利7群/同点1群、通常設定は有利8群。これは小さく目的選択された8開局の結果であり、Elo差/人間上級者/全開局への普遍的主張をしない。初期VH対局3ファイルはソースSHA256を未記録で、厳密な実行版の暗号学的同一性は後付けで保証できない。最終戦術比較とHard非退行記録にはハッシュを保存した。初期測定中の変更は終局ガード/公開メタデータ等で通常対局戦略に影響しない範囲と管理したが、再現性の制限として残す。開局符号Wilsonも `strength-summary.json` に記録する。
 
 全80局3264着手を保存履歴から再生監査: 全着手合法、独立実装の終局幾何一致、終局後の着手なし。旧Hardは古いAIソースを現在の正式Boardで動かした比較で、旧版の誤審判まで再現していない。
 
@@ -74,6 +74,7 @@ Very Hardの静かな局面を1秒計装で調査: 初期1660nodes→差分脅�
 - BLASプール未制限ではcommit533,024,768bytesに達したため、ワーカー起動前にBLAS/OMP/MKLスレッド1へ固定。AIはBLASを利用せず不要な予約を除いた。
 - controlled child:64MiB上限で192MiB割当を試行→MemoryError、親存続。
 - 親突然終了: Job Object所有者終了後、子終了シグナル確認、外側検証プロセス存続。
+- 実アダプター資源失敗:64MiB子が過剰割当でexit77→結果なしerrorとして安全回収、Job handle closed、temp directory removed、retired childなし、親存続を確認。
 - Very Hard実Windows SDL:60フレーム/1秒、最大フレーム19.56ms、Esc2.02ms、Menu復帰/ワーカー停止。
 - main実画面:SettingsでVery Hard選択→ゲーム開始→人間着手→Esc→Load選択→終了を自動イベントで確認。設定スクリーンショットを目視確認。
 
@@ -87,6 +88,6 @@ PyInstaller6.13.0でonedirビルド成功。通常作業フォルダの明示的
 
 ## 7. 独立レビューと残件
 
-Hard、正式ルール、VH探索、資源APIを実装者以外がレビューし、具体的不具合を修正・回帰追加。各レビューは限定source/mechanical PASS、製品全体は上記残件でCHANGES REQUESTED。REJECTEDに該当する設計差替えは採用していない。
+Hard、正式ルール、VH探索、資源APIを実装者以外がレビューし、具体的不具合を修正・回帰追加。Hard・ルール・探索レビューは限定source/mechanical PASS。資源レビューはsource/API部分のみPASSで、凍結動作/最終失敗回収証拠を含む全体はCHANGES REQUESTED。製品全体も上記残件でCHANGES REQUESTED。REJECTEDに該当する設計差替えは採用していない。
 
 残件: Hard非退行のより強い証拠、凍結版の環境制約切り分け/最終検証、複雑着手の非同期一点判定、深い実戦VCTコーパス・開局多様性。推測でPASSを付けずDraft PRに残す。
