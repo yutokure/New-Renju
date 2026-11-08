@@ -14,7 +14,7 @@
 
 ## Evidence
 
-- **497 local tests pass** (rules198, tactics57, plus Hard/general/UI/resource/compatibility regressions).
+- **539 local tests pass** (rules198, tactics57, plus Hard/general/UI/resource/compatibility regressions).
 - Equal1.5s: VH **20W4L vs improved Hard**, **22W2L vs old Hard**; normal5s vs Hard1.5s **16W0L**.
 - Eight unique purposeful openings, paired colors/repeats; confidence intervals and dependence warnings included. Not a universal Elo/strength claim.
 - Nominated tactical roots7/7 VH vs6/7 Hard; three proof-positive positions certified; counterattack negatives remain UNKNOWN.
@@ -25,7 +25,7 @@
 
 This is deliberately **Draft**, not full release PASS:
 
-1. Hard non-regression remains unestablished:5W6L5censored vs old Hard, broad dependent confidence interval; no correctness rollback or overfit tuning. Additional small-board oracle:19/20 full-width2ply best-value matches under TTon/off, with the20th retained as a documented forced-reply/fork-horizon limitation (not20/20 or strengthPASS). A separate predeclared16-opening/32-game follow-up is running serially; interim wins are not accepted as a final conclusion.
+1. Hard non-regression remains unestablished:5W6L5censored vs old Hard, broad dependent confidence interval; no correctness rollback or overfit tuning. Additional small-board oracle:19/20 full-width2ply best-value matches under TTon/off, with the20th retained as a documented forced-reply/fork-horizon limitation (not20/20 or strengthPASS). The separate predeclared16-opening/32-game follow-up completed18W9L5censored/0errors,2510legally replayed placements, all per-game source hashes equal. Descriptive Wilson47.82–81.36% and dependence/censoring do not establish noninferiority; initial results are retained.
 2. Final frozen build plus4-difficulty worker/real-adapter/single-point-validation/cancellation/cleanup checks pass in an explicitly selected workspace root. Actual packaged GUI with `--worker-directory` also passes Settings→human move→VH response→save→Menu→clean exit/no worker dirs. Default system TEMP access still fails in this host; default-path readiness remains unapproved.
 3. Complex moves exceeding12ms now continue in an isolated exact-candidate5s validator (independent narrow review PASS). Exhaustion remains UNKNOWN/unplayed with explicit R retry; no unlimited latency guarantee.
 4. Sparse composed tactical corpus / limited independent opening diversity; no federation/external strong-engine exhaustive certification.

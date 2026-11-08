@@ -8,7 +8,7 @@
 
 ## 実装と検証
 
-497ローカルテスト合格（9.13秒）。HardはMinimax/αβ/反復深化/Zobrist/TT/元の行評価・depth2/1.5s維持。独立VHはAND/OR VCF/VCT証明 + 差分窓Negamax/αβ・default5s。共有正式着手ルールは黒exact5優先/白>=5/長連/同方向44/再帰偽三を扱う。3/4/6/7は対称freestyle。簡易序盤は保持し大会規定と区別。
+539ローカルテスト合格（9.87秒）。HardはMinimax/αβ/反復深化/Zobrist/TT/元の行評価・depth2/1.5s維持。独立VHはAND/OR VCF/VCT証明 + 差分窓Negamax/αβ・default5s。共有正式着手ルールは黒exact5優先/白>=5/長連/同方向44/再帰偽三を扱う。3/4/6/7は対称freestyle。簡易序盤は保持し大会規定と区別。
 
 初期80局: VH同一1.5s vs改善Hard20-4、旧Hard22-2、default16-0。Hard非退行は5-6-5censored、未確定。全記録3264着手再生合法・独立終局幾何一致。8開局の相関/再使用と初期VH記録のソースhash未記録は明示。最終戦術7/7VH vs6/7Hard、陽性証明3件、反撃陰性を誤勝利にしない。
 
@@ -32,6 +32,6 @@ WindowsPython実UI60frames最大19.56ms、Esc2.02ms。512MiB Job cap、BLAS1thre
 
 - hash-pinned最終16局は回収済み、VH14勝2敗/614合法着手、参考Wilson64.0〜96.5%。群集計/再生監査も保存済み。
 - DraftPRの最新説明とローカルテスト/CI不存在/未マージを確認。
-- 追加32局のHard非退行試験がbackground job `pwsh-ec613cff6e974ef7` で進行中。16開局はcommit1fb4cf2で事前固定。完了通知後job_output回収、summarize_matchesとreplay_audit、報告更新。途中結果だけで結論を出さない。
-- 独立Hard浅い探索oracle担当ac5f6284はtests/test_hard_search_oracle.pyとdocs/hard-search-oracle.mdのみ担当。20小盤のうち19は厳密2ply最適一致、1は既存強制応手絞込みの地平差でforkより単一脅威を好む制限を特徴づけ済み。対象42テスト0.53秒合格。全体497件へ追加した後の全体回帰は32局の完了後に直列実行する。アルファ/TTバグと誤認しない。
+- 事前固定16開局32局は完了回収済み。Hard18勝9敗5打切り/エラー0、参考Wilson47.82〜81.36%、2510合法再生、全ゲーム開始hash一致。統計的非退行はなお未確定。全対局計128局6388着手（スモーク除外）。
+- 独立Hard浅い探索oracle担当ac5f6284はtests/test_hard_search_oracle.pyとdocs/hard-search-oracle.mdのみ担当。20小盤のうち19は厳密2ply最適一致、1は既存強制応手絞込みの地平差でforkより単一脅威を好む制限を特徴づけ済み。対象42テスト0.53秒合格。追加後の全体回帰539件は32局完了後に直列実行し9.87秒で合格済み。アルファ/TTバグと誤認しない。
 - ハンドオフ時も全体PASSにしない。未達を隠してGoalcompleteにしない。UI非同期一点判定と明示rootの可搬対策/実配布GUIは完了。次はHard非退行の開局多様化、既定TEMPの別通常環境での再現、実戦VCTコーパスの拡張を優先。

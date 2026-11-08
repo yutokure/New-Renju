@@ -118,7 +118,7 @@ python -B -m benchmarks.hard_benchmark --output benchmarks/results/local.json
 
 ### 実測と受入れ状態
 
-ローカル497テストが合格。同一1.5秒の先後交替比較ではVery Hardは改善Hardに20勝4敗、旧Hardに22勝2敗でした。ただし8種類の開局群に限定した結果で、普遍的な棋力差ではありません。Hard自体の非退行（5勝6敗5打切り）は未確定で、配布exeの一時ディレクトリ動作にも未解決の検証事項があるため、全体は **CHANGES REQUESTED** です。[検証結果と信頼区間](docs/validation-results.md) / [最終判定と残件](docs/final-acceptance.md) を参照してください。
+ローカル539テストが合格。同一1.5秒の先後交替比較ではVery Hardは改善Hardに20勝4敗、旧Hardに22勝2敗でした。ただし8種類の開局群に限定した結果で、普遍的な棋力差ではありません。Hard自体の非退行は初期5勝6敗5打切り、別の事前固定16開局で18勝9敗5打切りでしたが、依然未確定で、配布exeの一時ディレクトリ動作にも未解決の検証事項があるため、全体は **CHANGES REQUESTED** です。[検証結果と信頼区間](docs/validation-results.md) / [最終判定と残件](docs/final-acceptance.md) を参照してください。
 
 配布GUIでも一時領域を明示できます（既存フォルダを指定）: `New-Renju.exe --worker-directory C:\RenjuWork`。既定TEMPは変更せず、権限エラー時に別領域へ黙って切り替えません。明示領域での実exe設定→人間着手→Very Hard応手→保存→Menu→終了を確認済みです。
 

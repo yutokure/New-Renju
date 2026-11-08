@@ -1,0 +1,10 @@
+[
+  {
+    "file": "benchmarks/results/matches-hard-diverse-predeclared.json",
+    "games": 32,
+    "legal_placements_replayed": 2510,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  }
+]
