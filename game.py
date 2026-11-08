@@ -1,6 +1,4 @@
 import pygame
-import json # Import json module
-import datetime # Import datetime module
 # import time # For potential AI delay
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_COLOR, LINE_COLOR, BLACK, WHITE,
@@ -37,9 +35,10 @@ WIN_LINE_WIDTH = 5    # Thicker line for win
 
 class Game:
     """Handles the game screen logic, drawing, and player/AI interaction."""
-    def __init__(self, screen, settings, *, worker_directory=None):
+    def __init__(self, screen, settings, *, worker_directory=None, validated_game=None):
         self.screen = screen
         self.settings = settings
+        self.worker_directory = worker_directory
         self.font = pygame.font.Font(None, 30)
         self.small_font = pygame.font.Font(None, 24) # Font for move counter
         self.game_over_font = pygame.font.Font(None, 72)
@@ -89,7 +88,11 @@ class Game:
         self._overlay_invalid = []
         self._visual_threats = []
         self._invalid_cells = []
-        self.reset_game()
+        try:
+            self.reset_game(validated_game=validated_game)
+        except Exception:
+            self.close()
+            raise
 
     def close(self):
         """Dispose workers on menu, quit, or replacement of this game."""
@@ -119,48 +122,35 @@ class Game:
         self._overlay_invalid = []
         self._visual_key = None
 
-    def reset_game(self, move_history_to_load=None):
-        """Resets the game state. Can optionally load a move history."""
+    def reset_game(self, move_history_to_load=None, *, validated_game=None):
+        """Stage replay before touching the current game; never skip bad moves."""
+        from save_data import validate_history, settings_data
+        staged = validated_game
+        if staged is not None and staged.settings != settings_data(self.settings):
+            raise ValueError('Validated save settings mismatch')
+        if staged is None and move_history_to_load is not None:
+            staged = validate_history(settings_data(self.settings), move_history_to_load)
+        if staged is not None and hasattr(self, 'board'):
+            # Prepare even fonts/buttons/AI instances away from the live object.
+            # A resource exception must not partly reset an existing game.
+            replacement = Game(self.screen, self.settings,
+                               worker_directory=self.worker_directory, validated_game=staged)
+            self.close()
+            self.__dict__.update(replacement.__dict__)
+            return
         self._cancel_work()
         self.ai_error = None
-        self.board = Board(
-            size=self.settings.board_size, win_length=self.settings.win_length
-        )
-        self.game_over = False
-        self.winner = None
-        self.win_line = None # ★★★ Initialize win_line here ★★★
-        self.current_player = BOARD_BLACK # Always start with Black unless loading history alters it
-        self.move_history = []
-
-        # Load history if provided
-        if move_history_to_load:
-            print(f"Loading move history with {len(move_history_to_load)} moves.")
-            temp_board = Board(self.settings.board_size, self.settings.win_length)
-            for i, move in enumerate(move_history_to_load):
-                player = BOARD_BLACK if i % 2 == 0 else BOARD_WHITE
-                # We need to place stones directly for loading, bypass normal validation for speed/simplicity
-                if temp_board.is_within_bounds(move[0], move[1]) and temp_board.is_empty(move[0], move[1]):
-                    temp_board.grid[move[0], move[1]] = player
-                    temp_board.last_move = move
-                    self.move_history.append(move) # Add to the game's history
-                else:
-                    print(f"Warning: Invalid move {(move[0], move[1])} found in loaded history at index {i}. Skipping.")
-            # Set the actual board and current player based on loaded history
-            self.board = temp_board
-            if self.move_history: # If any moves were loaded
-                 self.current_player = BOARD_BLACK if len(self.move_history) % 2 == 0 else BOARD_WHITE
-                 # Check if the last move resulted in a win/draw
-                 last_player = BOARD_WHITE if self.current_player == BOARD_BLACK else BOARD_BLACK
-                 won, win_info = self.board.check_win(last_player)
-                 if won:
-                     self.game_over = True
-                     self.winner = last_player
-                     self.win_line = win_info
-                 elif not self.board.get_empty_cells():
-                      self.game_over = True
-                      self.winner = None
-            else:
-                 self.current_player = BOARD_BLACK # Default if history was empty or all invalid
+        self.board = staged.board if staged else Board(
+            size=self.settings.board_size, win_length=self.settings.win_length)
+        self.game_over = staged.game_over if staged else False
+        self.winner = staged.winner if staged else None
+        self.win_line = staged.win_line if staged else None
+        self.move_history = [list(move) for move in staged.moves] if staged else []
+        self.current_player = BOARD_BLACK if len(self.move_history) % 2 == 0 else BOARD_WHITE
+        if self.game_over and self.move_history:
+            # Live play retains the last mover after a terminal placement.
+            self.current_player = BOARD_WHITE if self.current_player == BOARD_BLACK else BOARD_BLACK
+        self.save_notice = None
 
         # Black always makes the first stone. Player types, not stone colors,
         # determine which side is AI (including old ai_starts save metadata).
@@ -249,10 +239,8 @@ class Game:
 
         # Show "Game Start" telop
         self.telop.show("対局開始", 2000) # Show for 2 seconds
-        # --- Force draw telop immediately ---
-        self.draw() # Draw everything including the now visible telop
-        pygame.display.flip() # Update screen
-        # --- End Force draw --- #
+        # Rendering belongs to the main loop after candidate publication. A
+        # staged load must not draw/flip a partially constructed replacement.
 
         print("Game Reset" + (" with loaded history" if move_history_to_load else "")) # Debug
         if self.current_player == BOARD_WHITE and self.player_types[1] == PLAYER_AI:
@@ -534,44 +522,23 @@ class Game:
         return self.player_types[player_index] == PLAYER_HUMAN
 
     def _save_game(self):
-        """Saves the current game settings and move history to a JSON file named with timestamp."""
+        """Publish complete, uniquely named saves without clobbering older ones."""
+        from save_data import atomic_save, save_payload
         if self.is_history_mode:
-            print("Cannot save while viewing history.")
-            return
-
-        # Generate filename with timestamp
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"gomoku_save_{timestamp}.json"
-
-        # Convert potential NumPy types to standard Python types for JSON serialization
-        serializable_settings = {
-            "board_size": int(self.settings.board_size),
-            "win_length": int(self.settings.win_length),
-            "game_mode": self.settings.game_mode,
-            "ai_difficulty": self.settings.ai_difficulty,
-            "ai_starts": self.settings.ai_starts,
-        }
-        serializable_history = [
-            (int(move[0]), int(move[1])) for move in self.move_history
-        ]
-
-        save_data = {
-            "schema_version": 2,
-            "rules": {"ruleset": self.board.ruleset,
-                      "opening_policy": self.board.opening_policy,
-                      "legacy_save_migration": "layouts-preserved-current-adjudication"},
-            "settings": serializable_settings,
-            "move_history": serializable_history,
-        }
-
+            self.save_notice = ('Return to the current position before saving.', pygame.time.get_ticks())
+            self.needs_redraw = True
+            return None
         try:
-            with open(filename, 'w') as f:
-                json.dump(save_data, f, indent=4)
-            print(f"Game saved successfully to {filename}")
-        except IOError as e:
-            print(f"Error saving game to {filename}: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred during saving: {e}")
+            path = atomic_save(save_payload(self.settings, self.board, self.move_history))
+            message = 'Game saved successfully.'
+            print(f'{message} {path}')
+        except (OSError, ValueError, TypeError) as exc:
+            path = None
+            message = 'Save failed. Check folder permissions / free space.'
+            logger.warning('Save failed: %s', exc)
+        self.save_notice = (message, pygame.time.get_ticks())
+        self.needs_redraw = True
+        return path
 
     def handle_event(self, event):
         """Handles events for game screen, including history and save buttons."""
@@ -1404,6 +1371,11 @@ class Game:
                 self.rematch_button.draw(self.screen)
                 self.menu_button_gameover.draw(self.screen)
 
+            if self.save_notice:
+                message, _ = self.save_notice
+                notice = self.small_font.render(message, True, TEXT_COLOR)
+                rect = notice.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 12))
+                self.screen.blit(notice, rect)
             self.needs_redraw = False
 
         # Draw Telop last (outside the needs_redraw block)

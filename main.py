@@ -17,7 +17,6 @@ if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--ai-worker
 
 import pygame
 import sys
-import json # Import json module
 import os # Import os module for listing files
 import glob # Import glob for pattern matching
 from constants import (
@@ -39,84 +38,29 @@ from ui import Button
 from settings import Settings
 from game import Game  # Import the Game class
 
-# --- Helper function for loading game data ---
+from save_data import read_save, LoadTask
+
+
 def _load_game_data(filename="gomoku_save.json"):
-    """Loads game settings and move history from a JSON file."""
+    """Bounded synchronous compatibility API; GUI uses detached LoadTask."""
     try:
-        with open(filename, 'r') as f:
-            data = json.load(f)
-
-        # Validate loaded data
-        required_keys = ["settings", "move_history"]
-        if not all(key in data for key in required_keys):
-            print(f"Error: Save file '{filename}' is missing required keys.")
-            return None, None
-
-        required_settings = [
-            "board_size", "win_length", "game_mode",
-            "ai_difficulty", "ai_starts"
-        ]
-        if not all(key in data["settings"] for key in required_settings):
-            print(f"Error: Save file '{filename}' settings section is missing keys.")
-            return None, None
-
-        # Convert game_mode back to tuple if needed (JSON saves lists)
-        if isinstance(data["settings"].get("game_mode"), list):
-             data["settings"]["game_mode"] = tuple(data["settings"]["game_mode"])
-
-        resolved = data['settings']
-        valid = Settings()
-        if (type(resolved['board_size']) is not int or resolved['board_size'] not in valid.board_size_options
-                or type(resolved['win_length']) is not int or resolved['win_length'] not in valid.win_length_options
-                or resolved['win_length'] > resolved['board_size']
-                or resolved['game_mode'] not in valid.game_mode_options
-                or resolved['ai_difficulty'] not in valid.ai_difficulty_options
-                or type(resolved['ai_starts']) is not bool):
-            print(f"Error: Unsupported settings in '{filename}'.")
-            return None, None
-
-        if data.get('schema_version', 1) not in (1, 2):
-            print(f"Error: Unsupported save version in '{filename}'.")
-            return None, None
-        if 'rules' in data:
-            from renju_rules import Rules
-            expected_rules = Rules(resolved['board_size'], resolved['win_length'])
-            metadata = data['rules']
-            if (not isinstance(metadata, dict) or metadata.get('ruleset') != expected_rules.ruleset
-                    or metadata.get('opening_policy') != expected_rules.opening_policy):
-                print(f"Error: Unsupported rule policy in '{filename}'.")
-                return None, None
-
-        # Validate move history format (list of lists/tuples with 2 ints)
-        if not isinstance(data["move_history"], list):
-             print(f"Error: Invalid move_history format in '{filename}'.")
-             return None, None
-        for move in data["move_history"]:
-             if not (isinstance(move, (list, tuple)) and len(move) == 2 and
-                     isinstance(move[0], int) and isinstance(move[1], int)):
-                  print(f"Error: Invalid move format {move} in '{filename}'.")
-                  return None, None
-
-        seen = set()
-        for move in data['move_history']:
-            cell = tuple(move)
-            if (any(type(v) is not int or not 0 <= v < resolved['board_size'] for v in move)
-                    or cell in seen):
-                print(f"Error: Out-of-bounds or duplicate history in '{filename}'.")
-                return None, None
-            seen.add(cell)
-        print(f"Game data loaded successfully from {filename}")
-        return data["settings"], data["move_history"]
-
-    except FileNotFoundError:
-        print(f"Error: Save file '{filename}' not found.")
+        loaded = read_save(filename)
+        return loaded.settings, loaded.moves
+    except Exception as exc:
+        print(f'Load failed: {exc}')
         return None, None
-    except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from '{filename}'. File might be corrupt.")
-        return None, None
-    except Exception as e:
-        print(f"An unexpected error occurred during loading: {e}")
-        return None, None
+
+
+def _prepare_loaded_game(screen, loaded, worker_directory=None):
+    """Build replacement in isolation; caller commits references on success."""
+    candidate = Settings()
+    for name, value in loaded.settings.items():
+        setattr(candidate, name, value)
+    game = Game(screen, candidate, worker_directory=worker_directory, validated_game=loaded)
+    game.save_notice = ('Game loaded successfully.', pygame.time.get_ticks())
+    game.needs_redraw = True
+    return candidate, game
+
 
 # --- Helper function to get save files ---
 def _get_save_files():
@@ -273,6 +217,8 @@ def main(worker_directory=None):
 
     # --- Main Loop ---
     running = True
+    load_task = None
+    load_notice = ''
     while running:
         ai_active = PLAYER_AI in settings.game_mode
         settings_value_renders = {} # Initialize here, ensuring it always exists
@@ -330,6 +276,12 @@ def main(worker_directory=None):
                 running = False
                 game_state = STATE_QUIT
 
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_state == STATE_LOAD_SELECT:
+                if load_task is not None:
+                    load_task.cancel()
+                    load_task = None
+                game_state = STATE_MENU
+                continue
             # Handle events based on the current state
             if game_state == STATE_MENU:
                 for button in menu_buttons:
@@ -419,6 +371,9 @@ def main(worker_directory=None):
             elif game_state == STATE_LOAD_SELECT:
                 # Handle Back button
                 if load_back_button.handle_event(event) == "Back":
+                    if load_task is not None:
+                        load_task.cancel()
+                        load_task = None
                     game_state = STATE_MENU
                     continue
                 # Handle Page buttons
@@ -437,37 +392,13 @@ def main(worker_directory=None):
                      clicked_file_path = button.handle_event(event) # Returns button.data (full path)
                      if clicked_file_path:
                          print(f"Load selected: {clicked_file_path}")
-                         loaded_settings_data, loaded_moves = _load_game_data(clicked_file_path)
-                         if loaded_settings_data and loaded_moves is not None:
-                             # Update settings
+                         if load_task is None:
                              try:
-                                 settings.board_size = int(loaded_settings_data['board_size'])
-                                 settings.win_length = int(loaded_settings_data['win_length'])
-                                 loaded_game_mode = loaded_settings_data['game_mode']
-                                 if isinstance(loaded_game_mode, list):
-                                      settings.game_mode = tuple(loaded_game_mode)
-                                 elif isinstance(loaded_game_mode, tuple):
-                                      settings.game_mode = loaded_game_mode
-                                 else:
-                                      raise ValueError("Invalid game_mode type")
-                                 settings.ai_difficulty = str(loaded_settings_data['ai_difficulty'])
-                                 settings.ai_starts = bool(loaded_settings_data['ai_starts'])
-                             except Exception as e:
-                                  print(f"Error applying loaded settings: {e}")
-                                  continue # Stay in load select screen
-
-                             # Validate settings
-                             if settings.board_size not in settings.board_size_options:
-                                 print(f"Warning: Invalid board size {settings.board_size}")
-                                 continue
-
-                             # Start game with loaded data
-                             current_game = Game(screen, settings, worker_directory=worker_directory)
-                             current_game.reset_game(move_history_to_load=loaded_moves)
-                             game_state = STATE_GAME
-                             print("Loaded Game:", settings.get_setting_summary())
-                         else:
-                             print("Failed to load game data from selected file.")
+                                 load_task = LoadTask(clicked_file_path)
+                             except (OSError, RuntimeError) as exc:
+                                 load_notice = 'Load failed: ' + str(exc)
+                             else:
+                                 load_notice = 'Validating saved game... (Esc / Back to cancel)'
                          break # Exit file button loop once one is clicked
 
             elif game_state == STATE_GAME:
@@ -476,6 +407,24 @@ def main(worker_directory=None):
                     if next_state == STATE_MENU:
                         current_game = None # Clear game instance when going back to menu
                         game_state = STATE_MENU
+
+        if load_task is not None and load_task.done.is_set():
+            completed, load_task = load_task, None
+            if game_state == STATE_LOAD_SELECT and not completed.cancelled.is_set():
+                if completed.error:
+                    load_notice = 'Load failed: ' + completed.error
+                else:
+                    try:
+                        replacement_settings, replacement = _prepare_loaded_game(
+                            screen, completed.result, worker_directory)
+                    except Exception as exc:
+                        load_notice = 'Load failed: ' + str(exc)
+                    else:
+                        if current_game:
+                            current_game.close()
+                        settings, current_game = replacement_settings, replacement
+                        game_state = STATE_GAME
+                        load_notice = ''
 
         # --- Updates --- (e.g., AI moves)
         if game_state == STATE_GAME and current_game:
@@ -536,6 +485,9 @@ def main(worker_directory=None):
             if current_page < num_pages - 1:
                  load_next_page_button.draw(screen)
             load_back_button.draw(screen)
+            if load_notice:
+                notice = pygame.font.Font(None, 24).render(load_notice[:100], True, TEXT_COLOR)
+                screen.blit(notice, notice.get_rect(center=(SCREEN_WIDTH // 2, page_nav_y - 75)))
 
         elif game_state == STATE_GAME:
             if current_game:
@@ -551,6 +503,8 @@ def main(worker_directory=None):
         pygame.display.flip()
         clock.tick(60)
 
+    if load_task is not None:
+        load_task.cancel()
     if current_game:
         current_game.close()
     pygame.quit()
