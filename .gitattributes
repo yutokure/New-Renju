@@ -1,0 +1,3 @@
+# Preserve upstream notices/source bytes and published SHA-256 provenance.
+third_party_licenses/** -text
+fonts/** -text

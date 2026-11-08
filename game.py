@@ -1,4 +1,5 @@
 import pygame
+from ui_fonts import ui_font
 # import time # For potential AI delay
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_COLOR, LINE_COLOR, BLACK, WHITE,
@@ -34,26 +35,46 @@ RED = (255, 0, 0)
 THREAT_LINE_WIDTH = 2 # Thinner lines for threats
 WIN_LINE_WIDTH = 5    # Thicker line for win
 
+_PENDING_CLEANUP = []
+
+
+def retry_pending_cleanup(*, final=False):
+    remaining = []
+    for runner in _PENDING_CLEANUP:
+        try:
+            if final:
+                runner.close()
+            else:
+                runner.reap()  # GUI frame must never perform a blocking wait.
+                if runner.retired or getattr(runner, 'orphan_directories', []):
+                    remaining.append(runner)
+        except OSError as exc:
+            if final:
+                logger.warning("Pending worker cleanup: %s", exc)
+            remaining.append(runner)
+    _PENDING_CLEANUP[:] = remaining
+    return not remaining
+
 class Game:
     """Handles the game screen logic, drawing, and player/AI interaction."""
     def __init__(self, screen, settings, *, worker_directory=None, validated_game=None):
         self.screen = screen
         self.settings = settings
         self.worker_directory = worker_directory
-        self.font = pygame.font.Font(None, 30)
-        self.small_font = pygame.font.Font(None, 24) # Font for move counter
-        self.game_over_font = pygame.font.Font(None, 72)
+        self.font = ui_font(30)
+        self.small_font = ui_font(24) # Font for move counter
+        self.game_over_font = ui_font(72)
         # --- Use a Japanese Font --- #
         # !!! Replace with the actual path to your Japanese font file !!!
         from resources import asset_path
         japanese_font_path = asset_path('fonts/YasashisaGothicBold-V2.otf')
         try:
             self.telop_font = pygame.font.Font(japanese_font_path, 48)
-        except pygame.error as e:
+        except (pygame.error, OSError) as e:
             print(f"Error loading Japanese font '{japanese_font_path}': {e}")
             print("Falling back to default font for telop.")
-            self.telop_font = pygame.font.Font(None, 48) # Fallback
-        self.evaluation_font = pygame.font.Font(None, 16) # Font for evaluation scores
+            self.telop_font = ui_font(48) # Fallback
+        self.evaluation_font = ui_font(16) # Font for evaluation scores
 
         # Initialize Telop instance
         self.telop = Telop(screen_width=SCREEN_WIDTH, # Pass screen width
@@ -100,14 +121,21 @@ class Game:
 
     def close(self):
         """Dispose workers on menu, quit, or replacement of this game."""
-        self.ai_runner.close()
-        self.analysis_runner.close()
-        self.validation_runner.close()
+        complete = True
+        for runner in (self.ai_runner,self.analysis_runner,self.validation_runner):
+            try:
+                runner.close()
+            except OSError as exc:
+                complete = False
+                logger.warning('Worker cleanup incomplete: %s',exc)
+                if runner not in _PENDING_CLEANUP:
+                    _PENDING_CLEANUP.append(runner)
         self._pending_validation = None
         self._validation_retry = None
         self.validation_status = None
         self.ai_thinking = False
         self.evaluation_in_progress = False
+        return complete
 
     def _cancel_work(self):
         self.input_epoch = getattr(self, 'input_epoch', 0) + 1
@@ -566,7 +594,8 @@ class Game:
             self.needs_redraw = True
             return None
         try:
-            path = atomic_save(save_payload(self.settings, self.board, self.move_history))
+            from app_paths import save_directory
+            path = atomic_save(save_payload(self.settings, self.board, self.move_history), directory=save_directory())
             message = 'Game saved successfully.'
             print(f'{message} {path}')
         except (OSError, ValueError, TypeError) as exc:

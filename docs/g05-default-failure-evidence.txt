@@ -1,0 +1,35 @@
+G05 native Windows failure evidence (2026-11-08)
+OS: Windows 11 x64 build26300; Python3.12.3; PyInstaller6.13.0.
+Executable: development onedir Gomoku 2.0.exe; no --worker-directory.
+
+Diagnostic runtime hook exists ONLY in ignored build/Diagnostic.spec.
+Shipping New-Renju.spec has runtime_hooks=[]. Hook redirected output and
+faulthandler solely to identify a blocked stack; it is NOT release evidence.
+
+Initial stack:
+  tempfile.py:384 os.mkdir(file, 0o700)
+  tempfile.py:882 TemporaryDirectory.__init__
+  ai_async.py:start
+  game.py:_queue_legality_overlay
+  game.py:update
+  main.py:main
+
+After bounded inherited-ACL WorkerDirectory fix:
+Cannot start legality overlay worker
+  game.py:_queue_legality_overlay
+  ai_async.py:start
+  worker_storage.py:21 child.mkdir(mode=0o777)
+  pathlib.py:mkdir
+PermissionError: [WinError 5] Access denied:
+  %LOCALAPPDATA%\Gomoku2\workers\renju-ai-<uuid>
+
+Human center placement proceeded; AI worker startup:
+PermissionError: [WinError 5] Access denied at the same owned worker root.
+Save button:
+Save failed: [WinError 5] Access denied: %LOCALAPPDATA%\Gomoku2\Saves
+
+Thus app no longer loops in tempfile retry, but the default writable root is
+NOT certified in this tool-launched frozen-process environment. No ACL entries,
+ownership, security policies, antivirus controls, or system TEMP were changed.
+Controlled profile under workspace with precreated workers/Saves can execute
+Easy AI response and atomic saves; this is NOT default-profile certification.

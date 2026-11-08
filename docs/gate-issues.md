@@ -10,10 +10,14 @@
 | [#17](https://github.com/yutokure/New-Renju/issues/17) | A | G03 | 最終フレーム再描画と履歴へのライブ表示混入 | PR #22で解決・CLOSED |
 | [#18](https://github.com/yutokure/New-Renju/issues/18) | A | G02 | 再戦候補の資源例外と部分reset | PR #20で解決・CLOSED |
 | [#19](https://github.com/yutokure/New-Renju/issues/19) | A | G02 | 取消・期限切れワーカーの強制停止fallback | PR #20で解決・CLOSED |
-| [#21](https://github.com/yutokure/New-Renju/issues/21) | A | G04 | 補助脅威・Popup・部分overlayの表示意味 | G03で発見、G04へ引継ぎ |
-| [#5](https://github.com/yutokure/New-Renju/issues/5) | B | G05 | Windows凍結ワーカーの既定通信領域 | 実exeと展開ZIPで実証的に解消必須 |
-| [#23](https://github.com/yutokure/New-Renju/issues/23) | A | G04 | 状態・ルール説明・初回操作・視認性 | G04で対応 |
-| [#13](https://github.com/yutokure/New-Renju/issues/13) | A | G04 | 研究値の意味・表示 | 既存Hard static表示を確認し、必勝証明でないことと部分状態を画面明示 |
+| [#21](https://github.com/yutokure/New-Renju/issues/21) | A | G04 | 補助脅威・Popup・部分overlayの表示意味 | PR #24で解決・CLOSED |
+| [#5](https://github.com/yutokure/New-Renju/issues/5) | B | G05 | Windows凍結ワーカーの既定通信領域 | オーナー採用PORTABLEでexe隣既定・noargs非管理者7行matrix/展開ZIP PASS。PR #27で解決 |
+| [#25](https://github.com/yutokure/New-Renju/issues/25) | A/B | G05 | 実配布物の第三者ライセンス／フォント原文 | FreeSans除外＋DejaVu原文hash確認、69notices/source同梱の展開ZIP照合。PR #27で解決 |
+| [#26](https://github.com/yutokure/New-Renju/issues/26) | A/B | G05 | 回収例外で後続タスク処理／所有権が中断 | 故障注入とnative異常子終了/終了回収PASS。PR #27で解決 |
+| [#28](https://github.com/yutokure/New-Renju/issues/28) | A/B | G05 | 再ビルド前のportableデータ保護 | builder/spec事前guard・後段guard、既存bytes不変を検証。PR #27で解決 |
+| [#29](https://github.com/yutokure/New-Renju/issues/29) | A | G05 | 長い棋譜名とロード通知の画面重複 | 文字surfaceをhit枠内へ・7行page、実exe画像とinvalid load拒否を確認。PR #27で解決 |
+| [#23](https://github.com/yutokure/New-Renju/issues/23) | A | G04 | 状態・ルール説明・初回操作・視認性 | PR #24で解決・CLOSED |
+| [#13](https://github.com/yutokure/New-Renju/issues/13) | A | G04 | 研究値の意味・表示 | 既存表示を確認・補完、PR #24で解決・CLOSED |
 | [#9](https://github.com/yutokure/New-Renju/issues/9) | C | G04 | 深い禁手再帰のUNKNOWNと手動再試行 | UNKNOWNを誤判定へ変換せず、制限と操作を説明 |
 | [#10](https://github.com/yutokure/New-Renju/issues/10) | C | G05 | 非WindowsのOSメモリ強制上限 | 正式配布対象はWindows。非Windows保証なしを明示 |
 | [#3](https://github.com/yutokure/New-Renju/issues/3) | C | 対象外 | Hard棋力非退行の独立証拠不足 | 既知制限。普遍的な棋力改善を主張しない |

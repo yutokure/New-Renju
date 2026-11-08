@@ -1,0 +1,225 @@
+{
+  "clean_zip_matrix": {
+    "no_arguments": true,
+    "os": "nt",
+    "elevated": false,
+    "rows": [
+      {
+        "difficulty": "easy",
+        "mode": "Human vs AI",
+        "saved_settings": {
+          "board_size": 15,
+          "win_length": 5,
+          "game_mode": [
+            0,
+            1
+          ],
+          "ai_difficulty": "easy",
+          "ai_starts": false
+        },
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "save_load_history": true,
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "difficulty": "normal",
+        "mode": "Human vs AI",
+        "saved_settings": {
+          "board_size": 15,
+          "win_length": 5,
+          "game_mode": [
+            0,
+            1
+          ],
+          "ai_difficulty": "normal",
+          "ai_starts": false
+        },
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "save_load_history": true,
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "difficulty": "hard",
+        "mode": "Human vs AI",
+        "saved_settings": {
+          "board_size": 15,
+          "win_length": 5,
+          "game_mode": [
+            0,
+            1
+          ],
+          "ai_difficulty": "hard",
+          "ai_starts": false
+        },
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "save_load_history": true,
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "difficulty": "very_hard",
+        "mode": "Human vs AI",
+        "saved_settings": {
+          "board_size": 15,
+          "win_length": 5,
+          "game_mode": [
+            0,
+            1
+          ],
+          "ai_difficulty": "very_hard",
+          "ai_starts": false
+        },
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "save_load_history": true,
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "mode": "Human vs Human",
+        "terminal_history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            6
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            7,
+            5
+          ]
+        ],
+        "rematch_empty": true,
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "mode": "AI vs Human",
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            7
+          ]
+        ],
+        "exit_code": 0,
+        "worker_cleanup": true
+      },
+      {
+        "mode": "AI vs AI",
+        "history": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "exit_code": 0,
+        "worker_cleanup": true
+      }
+    ],
+    "pass": true
+  },
+  "portable_errors": {
+    "no_arguments": true,
+    "elevated": false,
+    "rows": [
+      {
+        "case": "different_cwd_and_temp",
+        "save_beside_exe": true,
+        "saved_moves": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ]
+        ],
+        "exit_code": 0
+      },
+      {
+        "case": "worker_root_obstructed",
+        "no_child": true,
+        "no_false_ai_move": true,
+        "gui_save_still_works": true,
+        "exit_code": 0
+      },
+      {
+        "case": "abnormal_worker_exit",
+        "child_count": 1,
+        "no_false_ai_move": true,
+        "exit_code": 0
+      }
+    ],
+    "pass": true
+  },
+  "invalid_load": {
+    "pass": true,
+    "invalid_load_no_partial_settings_apply": true,
+    "long_names_and_controls": "visually checked separately",
+    "exit_code": 0
+  }
+}

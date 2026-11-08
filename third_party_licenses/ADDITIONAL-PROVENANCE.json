@@ -1,0 +1,367 @@
+[
+  {
+    "component": "setuptools and pkg_resources",
+    "version": "78.1.1",
+    "installed_path": "setuptools-78.1.1.dist-info/licenses/LICENSE",
+    "saved_path": "third_party_licenses/Setuptools-78.1.1-LICENSE.txt",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "https://github.com/pypa/setuptools/tree/v78.1.1"
+  },
+  {
+    "component": "backports.tarfile (setuptools vendored)",
+    "version": "1.2.0",
+    "installed_path": "setuptools/_vendor/backports.tarfile-1.2.0.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/backports.tarfile-1.2.0/LICENSE",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "Homepage, https://github.com/jaraco/backports.tarfile",
+    "versioned_source": "https://github.com/jaraco/backports.tarfile/tree/v1.2.0"
+  },
+  {
+    "component": "importlib_metadata (setuptools vendored)",
+    "version": "8.0.0",
+    "installed_path": "setuptools/_vendor/importlib_metadata-8.0.0.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/importlib_metadata-8.0.0/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "upstream": "Source, https://github.com/python/importlib_metadata",
+    "versioned_source": "https://github.com/python/importlib_metadata/tree/v8.0.0"
+  },
+  {
+    "component": "jaraco.context (setuptools vendored)",
+    "version": "5.3.0",
+    "installed_path": "setuptools/_vendor/jaraco.context-5.3.0.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/jaraco.context-5.3.0/LICENSE",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "https://github.com/jaraco/jaraco.context",
+    "versioned_source": "https://github.com/jaraco/jaraco.context/tree/v5.3.0"
+  },
+  {
+    "component": "jaraco.functools (setuptools vendored)",
+    "version": "4.0.1",
+    "installed_path": "setuptools/_vendor/jaraco.functools-4.0.1.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/jaraco.functools-4.0.1/LICENSE",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "Homepage, https://github.com/jaraco/jaraco.functools",
+    "versioned_source": "https://github.com/jaraco/jaraco.functools/tree/v4.0.1"
+  },
+  {
+    "component": "jaraco.text (setuptools vendored)",
+    "version": "3.12.1",
+    "installed_path": "setuptools/_vendor/jaraco.text-3.12.1.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/jaraco.text-3.12.1/LICENSE",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "Homepage, https://github.com/jaraco/jaraco.text",
+    "versioned_source": "https://github.com/jaraco/jaraco.text/tree/v3.12.1"
+  },
+  {
+    "component": "more_itertools (setuptools vendored)",
+    "version": "10.3.0",
+    "installed_path": "setuptools/_vendor/more_itertools-10.3.0.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/more_itertools-10.3.0/LICENSE",
+    "sha256": "09f1c8c9e941af3e584d59641ea9b87d83c0cb0fd007eb5ef391a7e2643c1a46",
+    "bytes": 1053,
+    "upstream": "Homepage, https://github.com/more-itertools/more-itertools",
+    "versioned_source": "https://github.com/more-itertools/more-itertools/tree/v10.3.0"
+  },
+  {
+    "component": "packaging (setuptools vendored)",
+    "version": "24.2",
+    "installed_path": "setuptools/_vendor/packaging-24.2.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE",
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+    "bytes": 197,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "packaging (setuptools vendored)",
+    "version": "24.2",
+    "installed_path": "setuptools/_vendor/packaging-24.2.dist-info/LICENSE.APACHE",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE.APACHE",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "bytes": 10174,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "packaging (setuptools vendored)",
+    "version": "24.2",
+    "installed_path": "setuptools/_vendor/packaging-24.2.dist-info/LICENSE.BSD",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE.BSD",
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+    "bytes": 1344,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "tomli (setuptools vendored)",
+    "version": "2.0.1",
+    "installed_path": "setuptools/_vendor/tomli-2.0.1.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/tomli-2.0.1/LICENSE",
+    "sha256": "b80816b0d530b8accb4c2211783790984a6e3b61922c2b5ee92f3372ab2742fe",
+    "bytes": 1072,
+    "upstream": "Changelog, https://github.com/hukkin/tomli/blob/master/CHANGELOG.md",
+    "versioned_source": "https://github.com/hukkin/tomli/tree/2.0.1"
+  },
+  {
+    "component": "wheel (setuptools vendored)",
+    "version": "0.45.1",
+    "installed_path": "setuptools/_vendor/wheel-0.45.1.dist-info/LICENSE.txt",
+    "saved_path": "third_party_licenses/python-packages/wheel-0.45.1/LICENSE.txt",
+    "sha256": "30c23618679108f3e8ea1d2a658c7ca417bdfc891c98ef1a89fa4ff0c9828654",
+    "bytes": 1107,
+    "upstream": "Changelog, https://wheel.readthedocs.io/en/stable/news.html",
+    "versioned_source": "https://github.com/pypa/wheel/tree/0.45.1"
+  },
+  {
+    "component": "zipp (setuptools vendored)",
+    "version": "3.19.2",
+    "installed_path": "setuptools/_vendor/zipp-3.19.2.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/zipp-3.19.2/LICENSE",
+    "sha256": "86da0f01aeae46348a3c3d465195dc1ceccde79f79e87769a64b8da04b2a4741",
+    "bytes": 1023,
+    "upstream": "Homepage, https://github.com/jaraco/zipp",
+    "versioned_source": "https://github.com/jaraco/zipp/tree/v3.19.2"
+  },
+  {
+    "component": "packaging (wheel vendored)",
+    "version": "as vendored by wheel 0.45.1",
+    "installed_path": "setuptools/_vendor/wheel/vendored/packaging/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/wheel-0.45.1/vendored-packaging/LICENSE",
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+    "bytes": 197,
+    "upstream": "https://github.com/pypa/wheel/tree/0.45.1/src/wheel/vendored/packaging"
+  },
+  {
+    "component": "packaging (wheel vendored)",
+    "version": "as vendored by wheel 0.45.1",
+    "installed_path": "setuptools/_vendor/wheel/vendored/packaging/LICENSE.APACHE",
+    "saved_path": "third_party_licenses/python-packages/wheel-0.45.1/vendored-packaging/LICENSE.APACHE",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "bytes": 10174,
+    "upstream": "https://github.com/pypa/wheel/tree/0.45.1/src/wheel/vendored/packaging"
+  },
+  {
+    "component": "packaging (wheel vendored)",
+    "version": "as vendored by wheel 0.45.1",
+    "installed_path": "setuptools/_vendor/wheel/vendored/packaging/LICENSE.BSD",
+    "saved_path": "third_party_licenses/python-packages/wheel-0.45.1/vendored-packaging/LICENSE.BSD",
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+    "bytes": 1344,
+    "upstream": "https://github.com/pypa/wheel/tree/0.45.1/src/wheel/vendored/packaging"
+  },
+  {
+    "component": "packaging",
+    "version": "24.2",
+    "installed_path": "packaging-24.2.dist-info/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE",
+    "sha256": "cad1ef5bd340d73e074ba614d26f7deaca5c7940c3d8c34852e65c4909686c48",
+    "bytes": 197,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "packaging",
+    "version": "24.2",
+    "installed_path": "packaging-24.2.dist-info/LICENSE.APACHE",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE.APACHE",
+    "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "bytes": 10174,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "packaging",
+    "version": "24.2",
+    "installed_path": "packaging-24.2.dist-info/LICENSE.BSD",
+    "saved_path": "third_party_licenses/python-packages/packaging-24.2/LICENSE.BSD",
+    "sha256": "b70e7e9b742f1cc6f948b34c16aa39ffece94196364bc88ff0d2180f0028fac5",
+    "bytes": 1344,
+    "upstream": "Documentation, https://packaging.pypa.io/",
+    "versioned_source": "https://github.com/pypa/packaging/tree/24.2"
+  },
+  {
+    "component": "platformdirs",
+    "version": "4.3.7",
+    "installed_path": "platformdirs-4.3.7.dist-info/licenses/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/platformdirs-4.3.7/licenses/LICENSE",
+    "sha256": "29e0fd62e929850e86eb28c3fdccf0cefdf4fa94879011cffb3d0d4bed6d4db6",
+    "bytes": 1089,
+    "upstream": "Changelog, https://github.com/tox-dev/platformdirs/releases",
+    "versioned_source": "https://github.com/tox-dev/platformdirs/tree/4.3.7"
+  },
+  {
+    "component": "typing_extensions",
+    "version": "4.13.1",
+    "installed_path": "typing_extensions-4.13.1.dist-info/licenses/LICENSE",
+    "saved_path": "third_party_licenses/python-packages/typing_extensions-4.13.1/licenses/LICENSE",
+    "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+    "bytes": 13936,
+    "upstream": "Bug Tracker, https://github.com/python/typing_extensions/issues",
+    "versioned_source": "https://github.com/python/typing_extensions/tree/4.13.1"
+  },
+  {
+    "component": "setuptools generated validator notices",
+    "version": "78.1.1",
+    "saved_path": "third_party_licenses/Setuptools-validator-NOTICE.txt",
+    "bytes": 18737,
+    "sha256": "5d300dbfa643138b013b75ac9caeee591f951b8b0ee24288c34ccd926c4780c8",
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/NOTICE",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/__init__.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/__init__.py",
+    "sha256": "767a7a4fb78f3f5479cf83ae0bb15dd9d905948aed21f8b351fbe91893fa9f3d",
+    "bytes": 1042,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/__init__.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/error_reporting.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/error_reporting.py",
+    "sha256": "99e95d0fb9c141da25421bc6fb8debd547be814d67ece440251f3abe1dd1aef9",
+    "bytes": 11813,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/error_reporting.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/extra_validations.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/extra_validations.py",
+    "sha256": "f86506e52fbe8a363c59f5db7573e81e5eb2c06b32105f5db43a5e9d2a093c78",
+    "bytes": 2858,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/extra_validations.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/formats.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/formats.py",
+    "sha256": "4c44e890904af618e5f9c560d6896ca23909c0bc5f3fbfdc860250366cc007df",
+    "bytes": 13564,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/formats.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/fastjsonschema_exceptions.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/fastjsonschema_exceptions.py",
+    "sha256": "c3be3d260a8a8bc72504570e6dd71b655aac985e2827f401ca16754866d414dc",
+    "bytes": 1612,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/fastjsonschema_exceptions.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "setuptools generated validator source",
+    "version": "78.1.1",
+    "installed_path": "setuptools/config/_validate_pyproject/fastjsonschema_validations.py",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/fastjsonschema_validations.py",
+    "sha256": "162843e5970cea9efb04f674e021aa877044c153683cc289649032b89a64014d",
+    "bytes": 354682,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/fastjsonschema_validations.py",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "Python-3.12.3-license-acknowledgements.rst",
+    "saved_path": "third_party_licenses/Python-3.12.3-license-acknowledgements.rst",
+    "sha256": "bad93f2d7f71f6729b12cf0080951ace371acaf5e3fd6835118d53cd4bfd9120",
+    "bytes": 53905,
+    "upstream": "https://raw.githubusercontent.com/python/cpython/v3.12.3/Doc/license.rst",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "GPL-2.0.txt",
+    "saved_path": "third_party_licenses/GPL-2.0.txt",
+    "sha256": "edaef632cbb643e4e7a221717a6c441a4c1a7c918e6e4d56debc3d8739b233f6",
+    "bytes": 17984,
+    "upstream": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "DejaVu Sans Bold license",
+    "version": "2.35 via Matplotlib 3.10.1",
+    "saved_path": "third_party_licenses/DejaVu-LICENSE.txt",
+    "sha256": "d75938dec098f06f0ac3c00853065d94f020be1c3c62ef1dc2975ba15b4d9b0e",
+    "bytes": 4816,
+    "upstream": "https://raw.githubusercontent.com/matplotlib/matplotlib/v3.10.1/lib/matplotlib/mpl-data/fonts/ttf/LICENSE_DEJAVU",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "SDL2_ttf",
+    "version": "2.20.1",
+    "saved_path": "third_party_licenses/LICENSE.sdl2_ttf.txt",
+    "sha256": "28aabfed22b3cb0b7e23ef40385e4f66297c960082f029c96d073cc1d4e008d5",
+    "bytes": 878,
+    "upstream": "https://raw.githubusercontent.com/libsdl-org/SDL_ttf/release-2.20.1/LICENSE.txt",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "OpenSSL",
+    "version": "3.0.13",
+    "saved_path": "third_party_licenses/OpenSSL-LICENSE.txt",
+    "sha256": "7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a",
+    "bytes": 10175,
+    "upstream": "https://raw.githubusercontent.com/openssl/openssl/openssl-3.0.13/LICENSE.txt",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "historical FreeFont README (not exact corresponding source)",
+    "version": "2002 README in old official archive",
+    "saved_path": "third_party_licenses/FreeFont-historical-README.txt",
+    "sha256": "9271061938872b3a3c5cd9d29cd627646ce46320b160e9dfa6956395dfe1344f",
+    "bytes": 5192,
+    "upstream": "https://ftp.gnu.org/gnu/freefont/freefont-sfd.tar.gz",
+    "upstream_byte_match": true
+  },
+  {
+    "component": "NumPy referenced third-party license",
+    "version": "1.26.3",
+    "saved_path": "third_party_licenses/numpy-1.26.3/lapack-lite-LICENSE.txt",
+    "sha256": "a14cc25e10d40a3aa705b7de2fb764a6535d8ee9b2db4e1724900585457dfd55",
+    "bytes": 2266,
+    "upstream": "https://raw.githubusercontent.com/numpy/numpy/v1.26.3/numpy/linalg/lapack_lite/LICENSE.txt",
+    "upstream_full_file_sha256": "a14cc25e10d40a3aa705b7de2fb764a6535d8ee9b2db4e1724900585457dfd55",
+    "verbatim_excerpt": false
+  },
+  {
+    "component": "NumPy referenced third-party license",
+    "version": "1.26.3",
+    "saved_path": "third_party_licenses/numpy-1.26.3/libdivide-LICENSE.txt",
+    "sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec",
+    "bytes": 1018,
+    "upstream": "https://raw.githubusercontent.com/numpy/numpy/v1.26.3/numpy/core/include/numpy/libdivide/LICENSE.txt",
+    "upstream_full_file_sha256": "fbc539f47d0cf83bc61378080fb873d5c14630126cacbfe754035c3926daa5ec",
+    "verbatim_excerpt": false
+  },
+  {
+    "component": "NumPy referenced third-party license",
+    "version": "1.26.3",
+    "saved_path": "third_party_licenses/numpy-1.26.3/dragon4-LICENSE-header.txt",
+    "sha256": "314d37e839e58a966839d94cba51c35a880c7824190d87aa88210b75761e61c4",
+    "bytes": 1117,
+    "upstream": "https://raw.githubusercontent.com/numpy/numpy/v1.26.3/numpy/core/src/multiarray/dragon4.c",
+    "upstream_full_file_sha256": "c27d0a8026bdb8876562b720ab24d1688e3827a89f6083cd6e7e8caa9584aba3",
+    "verbatim_excerpt": true
+  },
+  {
+    "component": "setuptools validator adjacent original notice",
+    "version": "78.1.1",
+    "saved_path": "third_party_licenses/sources/setuptools-78.1.1/setuptools/config/_validate_pyproject/NOTICE",
+    "sha256": "5d300dbfa643138b013b75ac9caeee591f951b8b0ee24288c34ccd926c4780c8",
+    "bytes": 18737,
+    "upstream": "https://raw.githubusercontent.com/pypa/setuptools/v78.1.1/setuptools/config/_validate_pyproject/NOTICE"
+  }
+]
