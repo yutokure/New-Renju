@@ -33,5 +33,5 @@ WindowsPython実UI60frames最大19.56ms、Esc2.02ms。512MiB Job cap、BLAS1thre
 - hash-pinned最終16局は回収済み、VH14勝2敗/614合法着手、参考Wilson64.0〜96.5%。群集計/再生監査も保存済み。
 - DraftPRの最新説明とローカルテスト/CI不存在/未マージを確認。
 - 追加32局のHard非退行試験がbackground job `pwsh-ec613cff6e974ef7` で進行中。16開局はcommit1fb4cf2で事前固定。完了通知後job_output回収、summarize_matchesとreplay_audit、報告更新。途中結果だけで結論を出さない。
-- 独立Hard浅い探索oracle担当ac5f6284はtests/test_hard_search_oracle.pyとdocs/hard-search-oracle.mdのみ担当。20小盤のうち19は厳密2ply最適一致、1は既存強制応手絞込みの地平差でforkより単一脅威を好む制限を特徴づけ中。アルファ/TTバグと誤認しない。
+- 独立Hard浅い探索oracle担当ac5f6284はtests/test_hard_search_oracle.pyとdocs/hard-search-oracle.mdのみ担当。20小盤のうち19は厳密2ply最適一致、1は既存強制応手絞込みの地平差でforkより単一脅威を好む制限を特徴づけ済み。対象42テスト0.53秒合格。全体497件へ追加した後の全体回帰は32局の完了後に直列実行する。アルファ/TTバグと誤認しない。
 - ハンドオフ時も全体PASSにしない。未達を隠してGoalcompleteにしない。UI非同期一点判定と明示rootの可搬対策/実配布GUIは完了。次はHard非退行の開局多様化、既定TEMPの別通常環境での再現、実戦VCTコーパスの拡張を優先。
