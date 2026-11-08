@@ -6,10 +6,11 @@
 |---|---|---|---|---|
 | [#11](https://github.com/yutokure/New-Renju/issues/11) | A/B | G01 | 棋譜の意味検証・一括適用 | PR #15で解決・CLOSED |
 | [#14](https://github.com/yutokure/New-Renju/issues/14) | A/B | G01 | 保存の直接上書き・衝突・通知 | PR #15で解決・CLOSED |
-| [#16](https://github.com/yutokure/New-Renju/issues/16) | A | G02 | hover依存・イベント座標・遷移と連続入力 | G02で対応 |
+| [#16](https://github.com/yutokure/New-Renju/issues/16) | A | G02 | hover依存・イベント座標・遷移と連続入力 | PR #20で解決・CLOSED |
 | [#17](https://github.com/yutokure/New-Renju/issues/17) | A | G03 | 最終フレーム再描画と履歴へのライブ表示混入 | G02で発見、G03へ引継ぎ |
-| [#18](https://github.com/yutokure/New-Renju/issues/18) | A | G02 | 再戦候補の資源例外と部分reset | G02で対応 |
-| [#19](https://github.com/yutokure/New-Renju/issues/19) | A | G02 | 取消・期限切れワーカーの強制停止fallback | G02で対応 |
+| [#18](https://github.com/yutokure/New-Renju/issues/18) | A | G02 | 再戦候補の資源例外と部分reset | PR #20で解決・CLOSED |
+| [#19](https://github.com/yutokure/New-Renju/issues/19) | A | G02 | 取消・期限切れワーカーの強制停止fallback | PR #20で解決・CLOSED |
+| [#21](https://github.com/yutokure/New-Renju/issues/21) | A | G04 | 補助脅威・Popup・部分overlayの表示意味 | G03で発見、G04へ引継ぎ |
 | [#5](https://github.com/yutokure/New-Renju/issues/5) | B | G05 | Windows凍結ワーカーの既定通信領域 | 実exeと展開ZIPで実証的に解消必須 |
 | [#13](https://github.com/yutokure/New-Renju/issues/13) | A | G04 | 研究値の意味・表示 | 最新mainはHard staticを明示済み。追加確認後判断 |
 | [#9](https://github.com/yutokure/New-Renju/issues/9) | C | G04 | 深い禁手再帰のUNKNOWNと手動再試行 | UNKNOWNを誤判定へ変換せず、制限と操作を説明 |

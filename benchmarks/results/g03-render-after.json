@@ -1,0 +1,19 @@
+{
+  "kind": "lightweight serial forced draw smoke",
+  "samples": [
+    {
+      "board_size": 15,
+      "frames": 200,
+      "seconds": 0.13758690000031493,
+      "ms_per_forced_frame": 0.6879345000015746,
+      "driver": "dummy"
+    },
+    {
+      "board_size": 19,
+      "frames": 200,
+      "seconds": 0.1938412999988941,
+      "ms_per_forced_frame": 0.9692064999944705,
+      "driver": "dummy"
+    }
+  ]
+}
