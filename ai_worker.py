@@ -58,6 +58,40 @@ def run_request(request_path):
         board = Board(data['size'], data['win_length'])
         board.grid = np.array(data['grid'], dtype=int)
         board.last_move = tuple(data['last_move']) if data['last_move'] is not None else None
+        if request['kind'] == 'validate':
+            # A single candidate is adjudicated completely, independently from
+            # evaluation/search and without Board's short UI validation budget.
+            from ai_async import validation_context, _candidate_shape
+            from renju_rules import Rules
+            context = request.get('validation_context')
+            candidate = context.get('candidate') if isinstance(context, dict) else None
+            if not _candidate_shape(candidate):
+                raise ValueError('Invalid validation request candidate')
+            expected = validation_context(board, request['player'], request['move_count'], candidate)
+            if context != expected:
+                raise ValueError('Validation request does not match snapshot')
+            deadline = time.perf_counter() + request['budget']
+            class ValidationInterrupted(Exception):
+                pass
+            def check_validation():
+                if cancel.is_set() or time.perf_counter() >= deadline:
+                    raise ValidationInterrupted()
+            response = {'kind': 'validate', 'candidate': candidate,
+                        'validation_context': expected, 'move': None,
+                        'adjudication': 'unknown', 'validation_complete': False,
+                        'verdict': None, 'phase': 'rule validation incomplete'}
+            try:
+                rules = Rules(board.size, board.win_length)
+                verdict = rules.classify_grid(board.grid, *candidate, request['player'],
+                                              request['move_count'], check_validation)
+                response.update(adjudication='legal' if verdict.legal else 'illegal',
+                                validation_complete=True, phase='rule validation complete',
+                                verdict={'legal': verdict.legal, 'win': verdict.win,
+                                         'reason': verdict.reason})
+            except ValidationInterrupted:
+                pass
+            publish(response, done=True)
+            return
         ai = create_ai(request['difficulty'], request['player'])
         if hasattr(ai, 'time_limit'):
             ai.time_limit = request['budget']

@@ -97,6 +97,39 @@ class Board:
                 and self._opening_allows(row, col, move_count)
                 and not self._is_forbidden(row, col, player))
 
+    def accept_adjudication(self, row, col, player, move_count, *, legal,
+                            expected_key, ruleset):
+        """Install a complete detached rule result only for this exact position.
+
+        The process adapter authenticates task kind/token/candidate first. This
+        method additionally checks local geometry and semantic metadata; UNKNOWN
+        never enters the cache. It does not place a stone.
+        """
+        key = (self.size, self.win_length, self.grid.tobytes())
+        if (type(legal) is not bool or type(row) is not int or type(col) is not int
+                or type(player) is not int or type(move_count) is not int or move_count < 0
+                or expected_key != key or ruleset != self._rules.ruleset
+                or player not in (BLACK, WHITE) or not self.is_within_bounds(row, col)
+                or not self.is_empty(row, col) or not self._opening_allows(row, col, move_count)):
+            return False
+        if player != BLACK or self.win_length != 5:
+            return legal  # No recursive foul question for white/custom games.
+        if self._legality_key != key:
+            self._legality_key = key
+            self._legality_cells = self._rules.flatten(self.grid)
+            self._legality_cache = {}
+        self._legality_cache[int(row*self.size+col)] = not legal
+        return True
+
+    def accept_checked_move(self, row, col, player, move_count, *, expected_key,
+                            ruleset, opening_policy):
+        """Narrow legal-only handoff after authenticated detached validation."""
+        if (type(row) is not int or type(col) is not int or type(player) is not int
+                or type(move_count) is not int or opening_policy != self._rules.opening_policy):
+            return False
+        return self.accept_adjudication(row, col, player, move_count, legal=True,
+                                        expected_key=expected_key, ruleset=ruleset)
+
     def place_stone(self, row, col, player, move_count):
         """Place a legal stone; only real attempts update visual feedback."""
         if self.is_valid_move(row, col, player, move_count):

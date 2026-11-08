@@ -78,6 +78,10 @@ class Game:
 
         self.ai_runner = AsyncAI()
         self.analysis_runner = AsyncAI()
+        self.validation_runner = AsyncAI()
+        self._pending_validation = None
+        self._validation_retry = None
+        self.validation_status = None
         self._analysis_key = None
         self._visual_key = None
         self._overlay_key = None
@@ -91,14 +95,22 @@ class Game:
         """Dispose workers on menu, quit, or replacement of this game."""
         self.ai_runner.close()
         self.analysis_runner.close()
+        self.validation_runner.close()
+        self._pending_validation = None
+        self._validation_retry = None
+        self.validation_status = None
         self.ai_thinking = False
         self.evaluation_in_progress = False
 
     def _cancel_work(self):
-        if getattr(self, 'ai_thinking', False):
+        if getattr(self, 'ai_thinking', False) or self._pending_validation is not None:
             self.telop.hide()
         self.ai_runner.cancel()
         self.analysis_runner.cancel()
+        self.validation_runner.cancel()
+        self._pending_validation = None
+        self._validation_retry = None
+        self.validation_status = None
         self.ai_thinking = False
         self.evaluation_in_progress = False
         self._analysis_key = None
@@ -567,7 +579,13 @@ class Game:
             self.close()
             return STATE_MENU
         if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+            self._cancel_work()
             self._save_game()
+            return None
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
+            retry = self._validation_retry
+            if retry is not None and retry['position'] == position_key(self.board, self.current_player, len(self.move_history)):
+                self._queue_move_validation(*retry['candidate'])
             return None
         # Always handle Menu button
         if self.back_button.handle_event(event) == "Menu":
@@ -613,6 +631,7 @@ class Game:
             return None # Consume event
 
         if save_clicked:
+             self._cancel_work()
              print("Save button clicked.")
              self._save_game() # Call the save function (no filename needed)
              return None # Consume event
@@ -633,7 +652,7 @@ class Game:
              return None # Consume event
 
         # Handle Gameplay Input
-        if not self.is_history_mode and not self.ai_thinking and self._is_human_turn() and not self.game_over:
+        if not self.is_history_mode and not self.ai_thinking and self._pending_validation is None and self._is_human_turn() and not self.game_over:
             # Check if the click was NOT on the checkbox
             # Need to update clickable_area check if checkbox moved
             # Re-get mouse pos as event.pos might be old if checkbox handled event
@@ -703,12 +722,114 @@ class Game:
              print(f"DEBUG: Animation started. Total blinking stones: {len(self.animating_stones)}")
 
     def _make_move(self, row, col):
+        if self._pending_validation is not None:
+            return False
+        self._validation_retry = None
+        self.validation_status = None
         try:
             return self._apply_move(row, col)
         except RuleValidationTimeout:
-            self.telop.show('判定未完了：この手は適用していません', 2000)
+            # The 12ms UI budget is not an adjudication. Keep the exact hand
+            # pending and resolve it in an isolated full-rule worker.
+            self._queue_move_validation(row, col)
+            return False
+
+    def _queue_move_validation(self, row, col):
+        from ai_async import validation_context, _candidate_shape
+        candidate = (row, col)
+        count = len(self.move_history)
+        if (self.is_history_mode or self.game_over or not _candidate_shape(candidate)
+                or not self.board.is_within_bounds(*candidate)
+                or not self.board.is_empty(*candidate)
+                or not self.board._opening_allows(*candidate, count)):
+            return False
+        self.ai_runner.cancel()
+        self.analysis_runner.cancel()
+        self.ai_thinking = False
+        self.evaluation_in_progress = False
+        self._analysis_key = self._overlay_key = None
+        self._validation_retry = None
+        self.ai_error = None
+        pending = {'candidate': candidate,
+                   'position': position_key(self.board, self.current_player, count),
+                   'board_key': (self.board.size, self.board.win_length, self.board.grid.tobytes()),
+                   'context': validation_context(self.board, self.current_player, count, candidate)}
+        try:
+            pending['token'] = self.validation_runner.start(
+                self.board, self.current_player, count, self.settings.ai_difficulty,
+                budget=5.0, kind='validate', candidate=candidate)
+        except (OSError, ValueError) as exc:
+            logger.exception('Cannot start rule validation worker')
+            self._pending_validation = None
+            self._validation_retry = pending
+            self.validation_status = 'unknown'
+            self.telop.show('判定未完了：Rで再判定できます', 2500)
             self.needs_redraw = True
             return False
+        self._pending_validation = pending
+        self.validation_status = 'pending'
+        self.telop.show('禁手・合法性を確認中...', None)
+        self.needs_redraw = True
+        return True
+
+    def _poll_move_validation(self):
+        pending = self._pending_validation
+        if pending is None:
+            return
+        count = len(self.move_history)
+        if pending['position'] != position_key(self.board, self.current_player, count):
+            self.validation_runner.cancel()
+            self._pending_validation = None
+            self.validation_status = None
+            self.telop.hide()
+            return
+        result = self.validation_runner.poll(self.board, self.current_player, count)
+        self.needs_redraw = True
+        if result is None and self.validation_runner.busy:
+            return
+        self._pending_validation = None
+        self.telop.hide()
+        # AsyncAI checks the full schema. Game additionally binds the handoff
+        # to its own pending identity and semantic metadata before cache install.
+        from ai_async import validation_context, _candidate_shape
+        context = validation_context(self.board, self.current_player, count, pending['candidate'])
+        bound = (isinstance(result, dict) and result.get('token') == pending['token']
+                 and result.get('kind') == 'validate'
+                 and _candidate_shape(result.get('candidate'))
+                 and tuple(result['candidate']) == pending['candidate']
+                 and result.get('validation_context') == pending['context'] == context)
+        if bound:
+            from types import SimpleNamespace
+            expected_task = SimpleNamespace(candidate=pending['candidate'],
+                                            validation_context=pending['context'],
+                                            position=pending['position'])
+            bound = AsyncAI._validation_packet_valid(expected_task, result)
+        state = result.get('adjudication') if bound else 'unknown'
+        if state == 'legal' and result.get('validation_complete') is True:
+            installed = self.board.accept_checked_move(
+                *pending['candidate'], self.current_player, count,
+                expected_key=pending['board_key'], ruleset=context['ruleset'],
+                opening_policy=context['opening_policy'])
+            if installed:
+                self.validation_status = None
+                self._validation_retry = None
+                self.ai_error = None
+                # This still performs current opening/empty checks; recursive
+                # black legality is the exact-key cached completed verdict.
+                if self._apply_move(*pending['candidate']):
+                    return
+            state = 'unknown'
+        if state == 'illegal' and result.get('validation_complete') is True:
+            self.validation_status = 'illegal'
+            self.invalid_move_pos = pending['candidate']
+            self.invalid_move_timer = pygame.time.get_ticks()
+            if not self._is_human_turn():
+                self.ai_error = 'Illegal AI move (Menu to retry)'
+            self.telop.show('この手は禁手または無効です', 2500)
+            return
+        self.validation_status = 'unknown'
+        self._validation_retry = pending
+        self.telop.show('判定未完了：未着手です。Rで再判定', 2500)
 
     def _apply_move(self, row, col):
          """Attempts to make a move, checks win/threats/joseki, switches player, starts animation."""
@@ -949,6 +1070,14 @@ class Game:
 
         self.ai_runner.reap()
         self.analysis_runner.reap()
+        self.validation_runner.reap()
+        if self._pending_validation is not None:
+            self._poll_move_validation()
+            return
+        # UNKNOWN stays explicitly unresolved until R (or a different human
+        # move/navigation). Never auto-loop validation or restart AI search.
+        if self._validation_retry is not None:
+            return
         self._poll_analysis()
         if not self.ai_thinking:
             self._queue_legality_overlay()
@@ -970,7 +1099,10 @@ class Game:
                 move = result.get('move')
                 if result.get('error'):
                     logger.error('AI worker: %s', result['error'])
-                if move is not None:
+                pending_move = result.get('validation_pending_move')
+                if pending_move is not None and result.get('validation_required') is True:
+                    self._queue_move_validation(*pending_move)
+                elif move is not None:
                     self._make_move(*move)
                 else:
                     # Do not silently retry a crashed worker forever, or run a
@@ -1106,6 +1238,15 @@ class Game:
         if self.is_history_mode:
             status_text_str = f"History: Move {self.display_move_index} / {len(self.move_history)}"
             current_player_at_index = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
+        elif self._pending_validation is not None:
+            status_text_str = 'Checking move legality...'
+            current_player_at_index = self.current_player
+        elif self.validation_status == 'unknown':
+            status_text_str = 'Rule check UNKNOWN - R to retry'
+            current_player_at_index = self.current_player
+        elif self.validation_status == 'illegal':
+            status_text_str = 'Invalid move - choose another'
+            current_player_at_index = self.current_player
         elif self.ai_thinking:
              status_text_str = "AI Thinking... {:.1f}s depth {}".format(
                  (time.perf_counter() - self.ai_runner.task.started) if self.ai_runner.task else self.ai_runner.last_info.get('elapsed', 0.0),
@@ -1164,7 +1305,7 @@ class Game:
 
     def _evaluate_empty_cells(self):
         """Queue one detached static analysis per displayed position."""
-        if not self.research_mode_enabled or self.ai_thinking or (not self.is_history_mode and not self._is_human_turn()):
+        if self._pending_validation is not None or self._validation_retry is not None or not self.research_mode_enabled or self.ai_thinking or (not self.is_history_mode and not self._is_human_turn()):
             return
         board = self._get_current_board_for_display()
         count = self.display_move_index if self.is_history_mode else len(self.move_history)
@@ -1186,7 +1327,7 @@ class Game:
         self.needs_redraw = True
 
     def _queue_legality_overlay(self):
-        if self.analysis_runner.busy or self.is_history_mode or self.game_over or not self._is_human_turn():
+        if self._pending_validation is not None or self._validation_retry is not None or self.analysis_runner.busy or self.is_history_mode or self.game_over or not self._is_human_turn():
             return
         count = len(self.move_history)
         key = position_key(self.board, self.current_player, count)

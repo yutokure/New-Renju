@@ -9,11 +9,14 @@ import time
 from worker_limits import ProcessBudget
 
 
-def main(exe):
+def main(exe, request_root=None):
     exe=Path(exe).resolve()
+    if request_root is not None:
+        request_root=Path(request_root).resolve()
+        request_root.mkdir(parents=True,exist_ok=True)
     rows=[]
     for difficulty in ('easy','normal','hard','very_hard'):
-        with tempfile.TemporaryDirectory(prefix='renju-frozen-') as tmp:
+        with tempfile.TemporaryDirectory(prefix='renju-frozen-',dir=request_root) as tmp:
             root=Path(tmp)
             token='frozen-'+difficulty
             request={'token':token,'kind':'move','difficulty':difficulty,'player':1,'move_count':0,'budget':.2,
@@ -45,7 +48,7 @@ def main(exe):
                     proc.wait(timeout=2)
                 if cap:
                     cap.close()
-    output=Path('benchmarks/results/frozen-worker-smoke.json')
+    output=Path('benchmarks/results/frozen-worker-smoke-explicit-root.json' if request_root else 'benchmarks/results/frozen-worker-smoke.json')
     output.write_text(json.dumps(rows,indent=2),encoding='utf-8')
     print(json.dumps(rows,indent=2))
 
@@ -53,4 +56,6 @@ def main(exe):
 if __name__=='__main__':
     p=argparse.ArgumentParser()
     p.add_argument('exe')
-    main(p.parse_args().exe)
+    p.add_argument('--request-root')
+    args=p.parse_args()
+    main(args.exe,args.request_root)

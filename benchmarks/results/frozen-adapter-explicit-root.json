@@ -1,0 +1,175 @@
+[
+  {
+    "kind": "move",
+    "difficulty": "easy",
+    "wall_seconds": 0.28928199999973003,
+    "result": {
+      "move": [
+        10,
+        5
+      ],
+      "completed_depth": 0,
+      "phase": "complete",
+      "token": "6accf9c60215411fb4f495e826d70b58",
+      "done": true,
+      "elapsed": 0.08040169999912905,
+      "resource_limits": {
+        "platform": "win32",
+        "supported": true,
+        "enforced": true,
+        "closed": false,
+        "pid": 7568,
+        "memory_limit_mb": 1024,
+        "memory_limit_bytes": 1073741824,
+        "diagnostic": "Windows Job Object per-process committed-memory cap active"
+      },
+      "timed_out": false
+    }
+  },
+  {
+    "kind": "move",
+    "difficulty": "normal",
+    "wall_seconds": 0.3186251999995875,
+    "result": {
+      "move": [
+        6,
+        5
+      ],
+      "completed_depth": 0,
+      "phase": "complete",
+      "token": "90eac0f6dcf1428f9c54f65c82eb5804",
+      "done": true,
+      "elapsed": 0.13181020000047283,
+      "resource_limits": {
+        "platform": "win32",
+        "supported": true,
+        "enforced": true,
+        "closed": false,
+        "pid": 12920,
+        "memory_limit_mb": 1024,
+        "memory_limit_bytes": 1073741824,
+        "diagnostic": "Windows Job Object per-process committed-memory cap active"
+      },
+      "timed_out": false
+    }
+  },
+  {
+    "kind": "move",
+    "difficulty": "hard",
+    "wall_seconds": 0.544623199999478,
+    "result": {
+      "move": [
+        6,
+        8
+      ],
+      "completed_depth": 2,
+      "phase": "complete",
+      "token": "d28a2b2a0d574c72b32aff331975f43f",
+      "done": true,
+      "elapsed": 0.35486820000005537,
+      "depth": 2,
+      "score": -5000,
+      "nodes": 126,
+      "evaluations": 110,
+      "resource_limits": {
+        "platform": "win32",
+        "supported": true,
+        "enforced": true,
+        "closed": false,
+        "pid": 14048,
+        "memory_limit_mb": 1024,
+        "memory_limit_bytes": 1073741824,
+        "diagnostic": "Windows Job Object per-process committed-memory cap active"
+      },
+      "timed_out": false
+    }
+  },
+  {
+    "kind": "move",
+    "difficulty": "very_hard",
+    "wall_seconds": 1.2640778000004502,
+    "result": {
+      "move": [
+        6,
+        8
+      ],
+      "completed_depth": 3,
+      "phase": "complete",
+      "token": "0e99970fbbb8448ebc21b816ce315fc8",
+      "done": true,
+      "elapsed": 1.0756132999995316,
+      "nodes": 405,
+      "evaluations": 336,
+      "score": 2702,
+      "proof_status": "UNKNOWN",
+      "resource_limits": {
+        "platform": "win32",
+        "supported": true,
+        "enforced": true,
+        "closed": false,
+        "pid": 4540,
+        "memory_limit_mb": 1024,
+        "memory_limit_bytes": 1073741824,
+        "diagnostic": "Windows Job Object per-process committed-memory cap active"
+      },
+      "timed_out": false
+    }
+  },
+  {
+    "kind": "validate",
+    "result": {
+      "move": null,
+      "completed_depth": 0,
+      "phase": "rule validation complete",
+      "kind": "validate",
+      "candidate": [
+        7,
+        7
+      ],
+      "validation_context": {
+        "kind": "validate",
+        "protocol": "renju-rules-classify-v1",
+        "candidate": [
+          7,
+          7
+        ],
+        "size": 15,
+        "win_length": 5,
+        "player": 1,
+        "move_count": 0,
+        "ruleset": "renju-rif-core-15x15",
+        "opening_policy": "simplified-center-opening",
+        "snapshot_id": "f7f50200ae5511eae6ce3dfb0d231cec0b4a2ad51afccfd02cfc68a1920be4cd"
+      },
+      "adjudication": "legal",
+      "validation_complete": true,
+      "verdict": {
+        "legal": true,
+        "win": false,
+        "reason": "legal_nonterminal"
+      },
+      "token": "f1fc16747e9c4f1a8ca6e5191cfa4ffb",
+      "done": true,
+      "elapsed": 0.0917624000012438,
+      "resource_limits": {
+        "platform": "win32",
+        "supported": true,
+        "enforced": true,
+        "closed": false,
+        "pid": 30532,
+        "memory_limit_mb": 1024,
+        "memory_limit_bytes": 1073741824,
+        "diagnostic": "Windows Job Object per-process committed-memory cap active"
+      },
+      "timed_out": false
+    }
+  },
+  {
+    "kind": "cancel",
+    "cancel_seconds": 0.0005082000006950693,
+    "child_exited": true,
+    "resources_closed": true,
+    "temporary_directory_removed": true,
+    "no_retired_children": true
+  }
+]
