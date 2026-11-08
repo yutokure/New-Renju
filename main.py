@@ -130,7 +130,14 @@ def _get_save_files():
         print(f"Error getting save files: {e}")
         return []
 
-def main():
+def main(worker_directory=None):
+    # An explicit portable/managed worker root is optional; default TEMP remains
+    # unchanged and denied paths never trigger silent fallback writes elsewhere.
+    if worker_directory is not None:
+        from pathlib import Path
+        worker_directory = str(Path(worker_directory).resolve(strict=True))
+        if not Path(worker_directory).is_dir():
+            raise ValueError('Worker directory must be an existing directory')
     pygame.init()
 
     settings = Settings()  # Create a Settings instance
@@ -328,7 +335,7 @@ def main():
                 for button in menu_buttons:
                     result = button.handle_event(event)
                     if result == "Start New Game":
-                        current_game = Game(screen, settings)
+                        current_game = Game(screen, settings, worker_directory=worker_directory)
                         game_state = STATE_GAME
                         print("Starting New Game:", settings.get_setting_summary())
                     elif result == "Load Game":
@@ -455,7 +462,7 @@ def main():
                                  continue
 
                              # Start game with loaded data
-                             current_game = Game(screen, settings)
+                             current_game = Game(screen, settings, worker_directory=worker_directory)
                              current_game.reset_game(move_history_to_load=loaded_moves)
                              game_state = STATE_GAME
                              print("Loaded Game:", settings.get_setting_summary())
@@ -551,4 +558,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(description='New-Renju')
+    parser.add_argument('--worker-directory', help='Existing directory for isolated worker temporary files')
+    args = parser.parse_args()
+    main(worker_directory=args.worker_directory)

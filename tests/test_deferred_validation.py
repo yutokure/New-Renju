@@ -129,7 +129,8 @@ def test_validation_semantic_metadata_change_cancels_response(mocked_adapter):
 
 
 class FakeRunner:
-    def __init__(self):
+    def __init__(self, *, worker_directory=None):
+        self.worker_directory = worker_directory
         self.busy = False
         self.task = None
         self.last_info = {}

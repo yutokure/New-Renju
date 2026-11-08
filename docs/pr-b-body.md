@@ -14,7 +14,7 @@
 
 ## Evidence
 
-- **495 local tests pass** (rules198, tactics57, plus Hard/general/UI/resource/compatibility regressions).
+- **497 local tests pass** (rules198, tactics57, plus Hard/general/UI/resource/compatibility regressions).
 - Equal1.5s: VH **20W4L vs improved Hard**, **22W2L vs old Hard**; normal5s vs Hard1.5s **16W0L**.
 - Eight unique purposeful openings, paired colors/repeats; confidence intervals and dependence warnings included. Not a universal Elo/strength claim.
 - Nominated tactical roots7/7 VH vs6/7 Hard; three proof-positive positions certified; counterattack negatives remain UNKNOWN.
@@ -26,7 +26,7 @@
 This is deliberately **Draft**, not full release PASS:
 
 1. Hard non-regression remains unestablished:5W6L5censored vs old Hard, broad dependent confidence interval; no correctness rollback or overfit tuning.
-2. Final frozen build plus4-difficulty worker/real-adapter/single-point-validation/cancellation/cleanup checks pass in an explicitly selected workspace root. Default system TEMP access fails in this host; the normal packaged GUI remains unapproved, not certified from the narrower success.
+2. Final frozen build plus4-difficulty worker/real-adapter/single-point-validation/cancellation/cleanup checks pass in an explicitly selected workspace root. Actual packaged GUI with `--worker-directory` also passes Settings→human move→VH response→save→Menu→clean exit/no worker dirs. Default system TEMP access still fails in this host; default-path readiness remains unapproved.
 3. Complex moves exceeding12ms now continue in an isolated exact-candidate5s validator (independent narrow review PASS). Exhaustion remains UNKNOWN/unplayed with explicit R retry; no unlimited latency guarantee.
 4. Sparse composed tactical corpus / limited independent opening diversity; no federation/external strong-engine exhaustive certification.
 5. Non-Windows OS memory cap explicitly unsupported; full tournament opening/clocks/claims/pass protocols out of scope.

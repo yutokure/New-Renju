@@ -1,0 +1,27 @@
+{
+  "explicit_worker_root": true,
+  "pid": 29444,
+  "saved_settings": {
+    "board_size": 15,
+    "win_length": 5,
+    "game_mode": [
+      0,
+      1
+    ],
+    "ai_difficulty": "very_hard",
+    "ai_starts": false
+  },
+  "saved_move_history": [
+    [
+      7,
+      7
+    ],
+    [
+      6,
+      8
+    ]
+  ],
+  "exit_code": 0,
+  "clean_exit": true,
+  "worker_directories_after_exit": 0
+}

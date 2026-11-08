@@ -37,7 +37,7 @@ WIN_LINE_WIDTH = 5    # Thicker line for win
 
 class Game:
     """Handles the game screen logic, drawing, and player/AI interaction."""
-    def __init__(self, screen, settings):
+    def __init__(self, screen, settings, *, worker_directory=None):
         self.screen = screen
         self.settings = settings
         self.font = pygame.font.Font(None, 30)
@@ -76,9 +76,9 @@ class Game:
         self.placing_animation_start_time = 0
         self.placing_animated_stone_info = None # (r, c, player)
 
-        self.ai_runner = AsyncAI()
-        self.analysis_runner = AsyncAI()
-        self.validation_runner = AsyncAI()
+        self.ai_runner = AsyncAI(worker_directory=worker_directory)
+        self.analysis_runner = AsyncAI(worker_directory=worker_directory)
+        self.validation_runner = AsyncAI(worker_directory=worker_directory)
         self._pending_validation = None
         self._validation_retry = None
         self.validation_status = None
