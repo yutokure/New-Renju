@@ -1,0 +1,20 @@
+{
+  "status": "PARTIAL_ONLY_NOT_DEFAULT_PROFILE_PASS",
+  "platform": "Windows 11 x64 build26300",
+  "executable": "PyInstaller onedir Gomoku 2.0.exe development build",
+  "profile": "Disposable workspace path with Japanese characters and spaces; LOCALAPPDATA and TEMP overridden for child; workers/Saves precreated; no ACL modifications",
+  "observations": [
+    {"mode": "Human vs AI", "difficulties": ["easy", "normal", "hard", "very_hard"], "human_first": [7,7], "ai_reply": "[6,7] or [6,8] from saved JSON", "save_history_return_load": true, "menu_quit_exit0_cleanup": true},
+    {"mode": "Human vs Human", "target": 3, "moves": [[7,7],[6,7],[7,6],[6,8],[7,5]], "terminal_and_rematch_empty_save": true, "window_close_exit0_cleanup": true},
+    {"mode": "AI vs Human", "difficulty": "easy", "moves": [[7,7],[6,7],[6,9]], "window_close_exit0_cleanup": true},
+    {"mode": "AI vs AI", "difficulty": "easy", "moves": [[7,7],[6,7]], "window_close_exit0_cleanup": true}
+  ],
+  "limitations": [
+    "Default LOCALAPPDATA real frozen process still fails WinError5, Issue5 OPEN",
+    "Not a fresh general-user token and not default-profile certification",
+    "No final clean-commit ZIP or extracted-ZIP/public-download test performed",
+    "PostMessage key events did not reach SDL; pointer navigation used, shortcut coverage is source tests only",
+    "Whole initial matrix stopped at AI-first timing assertion; separate pointer-only AI-first/AI-AI probe succeeded",
+    "Original raw screenshot/paths kept locally; images containing other desktop windows excluded from git"
+  ]
+}

@@ -178,3 +178,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Local development GUI probes may include host paths/desktop content.
+benchmarks/results/g05-development-*/
+benchmarks/results/g05-input-debug/
+benchmarks/results/g05-controlled-profile*/

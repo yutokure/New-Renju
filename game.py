@@ -34,6 +34,26 @@ RED = (255, 0, 0)
 THREAT_LINE_WIDTH = 2 # Thinner lines for threats
 WIN_LINE_WIDTH = 5    # Thicker line for win
 
+_PENDING_CLEANUP = []
+
+
+def retry_pending_cleanup(*, final=False):
+    remaining = []
+    for runner in _PENDING_CLEANUP:
+        try:
+            if final:
+                runner.close()
+            else:
+                runner.reap()  # GUI frame must never perform a blocking wait.
+                if runner.retired or getattr(runner, 'orphan_directories', []):
+                    remaining.append(runner)
+        except OSError as exc:
+            if final:
+                logger.warning("Pending worker cleanup: %s", exc)
+            remaining.append(runner)
+    _PENDING_CLEANUP[:] = remaining
+    return not remaining
+
 class Game:
     """Handles the game screen logic, drawing, and player/AI interaction."""
     def __init__(self, screen, settings, *, worker_directory=None, validated_game=None):
@@ -100,14 +120,21 @@ class Game:
 
     def close(self):
         """Dispose workers on menu, quit, or replacement of this game."""
-        self.ai_runner.close()
-        self.analysis_runner.close()
-        self.validation_runner.close()
+        complete = True
+        for runner in (self.ai_runner,self.analysis_runner,self.validation_runner):
+            try:
+                runner.close()
+            except OSError as exc:
+                complete = False
+                logger.warning('Worker cleanup incomplete: %s',exc)
+                if runner not in _PENDING_CLEANUP:
+                    _PENDING_CLEANUP.append(runner)
         self._pending_validation = None
         self._validation_retry = None
         self.validation_status = None
         self.ai_thinking = False
         self.evaluation_in_progress = False
+        return complete
 
     def _cancel_work(self):
         self.input_epoch = getattr(self, 'input_epoch', 0) + 1
@@ -566,7 +593,8 @@ class Game:
             self.needs_redraw = True
             return None
         try:
-            path = atomic_save(save_payload(self.settings, self.board, self.move_history))
+            from app_paths import save_directory
+            path = atomic_save(save_payload(self.settings, self.board, self.move_history), directory=save_directory())
             message = 'Game saved successfully.'
             print(f'{message} {path}')
         except (OSError, ValueError, TypeError) as exc:

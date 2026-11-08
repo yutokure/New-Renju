@@ -87,6 +87,7 @@ class AsyncAI:
         self.worker_directory = worker_directory
         self.task = None
         self.retired = []
+        self.orphan_directories = []
         self.last_info = {}
 
     @property
@@ -114,36 +115,46 @@ class AsyncAI:
         budget = float(budget)
         if not math.isfinite(budget) or budget < 0:
             raise ValueError('AI budget must be finite and nonnegative')
-        directory = tempfile.TemporaryDirectory(prefix='renju-ai-', dir=self.worker_directory)
-        root = Path(directory.name)
-        token = uuid.uuid4().hex
-        request = {'token': token, 'kind': kind, 'difficulty': difficulty,
-                   'player': int(player), 'move_count': int(move_count), 'budget': budget,
-                   'board': {'size': board.size, 'win_length': board.win_length,
-                             'grid': board.grid.tolist(), 'last_move': board.last_move}}
-        if request['board']['last_move'] is not None:
-            request['board']['last_move'] = [int(x) for x in board.last_move]
-        if context is not None:
-            request['validation_context'] = context
-        request_path = root / 'request.json'
-        request_path.write_text(json.dumps(request), encoding='utf-8')
-        # No captured pipes/queues: this is safe on Windows and detached from UI.
-        if getattr(sys, 'frozen', False):
-            command = [sys.executable, '--ai-worker', str(request_path)]
-        else:
-            command = [sys.executable, '-B', str(Path(__file__).with_name('ai_worker.py')), str(request_path)]
-        worker_env = os.environ.copy()
-        # AI uses scalar/grid logic, not BLAS. Thread pools only reserve memory
-        # and oversubscribe a tiny worker; set before importing NumPy there.
-        worker_env.update(OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1')
-        kwargs = {'stdin': subprocess.DEVNULL, 'stdout': subprocess.DEVNULL,
-                  'stderr': subprocess.DEVNULL, 'env': worker_env}
+        from app_paths import default_worker_directory
+        worker_root = self.worker_directory if self.worker_directory is not None else default_worker_directory()
         if os.name == 'nt':
-            kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            from worker_storage import WorkerDirectory
+            directory = WorkerDirectory(root=worker_root)
+        else:
+            directory = tempfile.TemporaryDirectory(prefix='renju-ai-', dir=worker_root)
         try:
+            root = Path(directory.name)
+            token = uuid.uuid4().hex
+            request = {'token': token, 'kind': kind, 'difficulty': difficulty,
+                       'player': int(player), 'move_count': int(move_count), 'budget': budget,
+                       'board': {'size': board.size, 'win_length': board.win_length,
+                                 'grid': board.grid.tolist(), 'last_move': board.last_move}}
+            if request['board']['last_move'] is not None:
+                request['board']['last_move'] = [int(x) for x in board.last_move]
+            if context is not None:
+                request['validation_context'] = context
+            request_path = root / 'request.json'
+            request_path.write_text(json.dumps(request), encoding='utf-8')
+            # No captured pipes/queues: this is safe on Windows and detached from UI.
+            if getattr(sys, 'frozen', False):
+                command = [sys.executable, '--ai-worker', str(request_path)]
+            else:
+                command = [sys.executable, '-B', str(Path(__file__).with_name('ai_worker.py')), str(request_path)]
+            worker_env = os.environ.copy()
+            # AI uses scalar/grid logic, not BLAS. Thread pools only reserve memory
+            # and oversubscribe a tiny worker; set before importing NumPy there.
+            worker_env.update(OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1')
+            kwargs = {'stdin': subprocess.DEVNULL, 'stdout': subprocess.DEVNULL,
+                      'stderr': subprocess.DEVNULL, 'env': worker_env}
+            if os.name == 'nt':
+                kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
             process = subprocess.Popen(command, **kwargs)
-        except Exception:
-            directory.cleanup()
+        except Exception as primary:
+            try:
+                directory.cleanup()
+            except OSError as cleanup:
+                self.orphan_directories.append(directory)
+                primary.add_note('Worker directory cleanup pending: ' + str(cleanup))
             raise
         resources = None
         try:
@@ -329,37 +340,64 @@ class AsyncAI:
             self.task = None
         self.reap()
 
-    def reap(self):
-        remaining = []
+    def _reap_retired(self, wait_timeout):
+        """Attempt every task once, retaining all incomplete cleanup for retry."""
+        remaining, errors = [], []
         for task in self.retired:
-            if task.process.poll() is None:
-                # Retired workers must not outlive cancellation/watchdog expiry
-                # indefinitely when terminate fails or has not taken effect.
-                # Never wait here: keep ownership and retry on the next reap if
-                # kill fails or the OS has not reported the exit yet.
-                try:
-                    task.process.kill()
-                except OSError:
-                    pass
-            if task.process.poll() is None:
-                remaining.append(task)
-            else:
-                task.process.wait(timeout=0)
-                try:
-                    if task.resources is not None:
-                        task.resources.close()
-                    task.directory.cleanup()
-                except OSError:
+            try:
+                if task.process.poll() is None:
+                    # Terminate may have failed or not taken effect. A failed
+                    # kill is harmless only if the child meanwhile exited.
+                    try:
+                        task.process.kill()
+                    except OSError:
+                        if task.process.poll() is None:
+                            raise
+                if wait_timeout == 0 and task.process.poll() is None:
+                    # Normal polling/cancellation must not wait for a live
+                    # worker or remove files it may still be using.
                     remaining.append(task)
+                    continue
+                task.process.wait(timeout=wait_timeout)
+                if task.resources is not None:
+                    task.resources.close()
+                task.directory.cleanup()
+            except (OSError, subprocess.TimeoutExpired, RuntimeError) as exc:
+                # In particular, a failed native CloseHandle deliberately
+                # remains owned by ProcessBudget. Never drop that task or let
+                # one failure prevent attempts on the other retired children.
+                remaining.append(task)
+                errors.append(exc)
         self.retired = remaining
+        return errors
+
+    def _reap_directories(self):
+        remaining, errors = [], []
+        for directory in self.orphan_directories:
+            try:
+                directory.cleanup()
+            except OSError as exc:
+                remaining.append(directory)
+                errors.append(exc)
+        self.orphan_directories = remaining
+        return errors
+
+    def reap(self):
+        self._reap_retired(wait_timeout=0)
+        self._reap_directories()
 
     def close(self):
-        self.cancel()
-        for task in self.retired:
-            if task.process.poll() is None:
-                task.process.kill()
-            task.process.wait(timeout=1.0)
-            if task.resources is not None:
-                task.resources.close()
-            task.directory.cleanup()
-        self.retired.clear()
+        """Bounded cleanup; raise on incomplete work while retaining ownership.
+
+        Callers must retain this runner and retry after a transient failure.
+        Returning normally means every owned child, job and directory closed.
+        """
+        if self.task is not None:
+            self._retire(self.task)
+            self.task = None
+        errors = self._reap_retired(wait_timeout=1.0) + self._reap_directories()
+        if errors:
+            failure = OSError(f'Worker cleanup incomplete for {len(self.retired)} task(s); retry close()')
+            for error in errors:
+                failure.add_note(f'{type(error).__name__}: {error}')
+            raise failure from errors[0]
