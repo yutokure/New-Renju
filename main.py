@@ -204,7 +204,7 @@ def _run_main(worker_directory=None):
     # --- Load Game Select UI Elements ---
     load_title_text = menu_font.render("Load Game", True, TEXT_COLOR)
     load_title_rect = load_title_text.get_rect(center=(SCREEN_WIDTH // 2, 80))
-    files_per_page = 8
+    files_per_page = 7
     current_page = 0
     selected_file_index = -1 # Index within the current page
     save_files = [] # Updated when entering the state

@@ -60,6 +60,15 @@ class Button:
             self.rect = self.text_surf.get_rect(center=self.center_pos)
             self.rect.inflate_ip(40, 20) # Add padding (increased horizontal for consistency)
 
+        # Fixed-size buttons must not paint labels outside their hit target.
+        # Keep original text/data intact; scale only the rendered label to fit.
+        available_width=max(1,self.rect.width-20)
+        available_height=max(1,self.rect.height-8)
+        if self.text_surf.get_width()>available_width or self.text_surf.get_height()>available_height:
+            scale=min(available_width/max(1,self.text_surf.get_width()),
+                      available_height/max(1,self.text_surf.get_height()))
+            self.text_surf=pygame.transform.smoothscale(self.text_surf,
+                (max(1,int(self.text_surf.get_width()*scale)),max(1,int(self.text_surf.get_height()*scale))))
         # Center the text within the final button rectangle
         self.text_rect = self.text_surf.get_rect(center=self.rect.center)
 

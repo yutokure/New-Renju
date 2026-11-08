@@ -37,6 +37,16 @@ def cell(game, row, col):
     return (game.start_x + col*game.cell_size, game.start_y + row*game.cell_size)
 
 
+def test_fixed_button_long_label_fits_and_retains_data(screen):
+    from ui_fonts import ui_font
+    name='gomoku_save_20261108_160132_986089_c050f008.json'
+    button=Button(name,(400,150),ui_font(36),width=460,height=35,data='full/path/'+name)
+    assert button.rect.contains(button.text_rect)
+    assert button.text_surf.get_width()<=440
+    assert button.text==name
+    assert button.handle_event(click((400,150)))=='full/path/'+name
+
+
 def test_button_direct_click_without_hover(screen):
     button = Button('Do it', (100,100), pygame.font.Font(None,24))
     assert not button.is_hovering
