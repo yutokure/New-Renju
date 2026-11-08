@@ -40,6 +40,8 @@ PLAYER_AI = 1
 AI_EASY = "easy"
 AI_NORMAL = "normal"
 AI_HARD = "hard"
+AI_VERY_HARD = "very_hard"
+AI_LABELS = {AI_EASY: 'Easy', AI_NORMAL: 'Normal', AI_HARD: 'Hard', AI_VERY_HARD: 'Very Hard'}
 
 # Animation Constants
 ANIMATION_DURATION = 600  # Total animation duration in ms (e.g., 2 blinks * 300ms/blink)

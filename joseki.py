@@ -4,7 +4,9 @@ from constants import (
     POPUP_BG_COLOR, POPUP_TEXT_COLOR, SCREEN_WIDTH, SCREEN_HEIGHT
 )
 
-JOSEKI_FILE = 'joseki.json'
+from resources import asset_path
+
+JOSEKI_FILE = asset_path('joseki.json')
 
 def load_joseki(filename=JOSEKI_FILE):
     """Loads joseki patterns from a JSON file."""

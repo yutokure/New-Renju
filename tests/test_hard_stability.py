@@ -70,9 +70,9 @@ def test_forbidden_exception_restores_board(monkeypatch):
     board = position(black=[(7, 7)], last=(7, 7))
     board.forbidden_checked_pos = (1, 2)
     state = snapshot(board)
-    def fail(*args):
+    def fail(*args, **kwargs):
         raise RuntimeError('line details')
-    monkeypatch.setattr(board, '_count_line_details', fail)
+    monkeypatch.setattr(board._rules, 'is_legal', fail)
     with pytest.raises(RuntimeError, match='line details'):
         board.is_forbidden(7, 8)
     assert_restored(board, state)

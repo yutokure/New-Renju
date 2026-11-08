@@ -1,0 +1,45 @@
+{
+  "budget": 5.0,
+  "wall_seconds": 5.317325500000152,
+  "peak_worker_rss_bytes": 38993920,
+  "peak_worker_commit_bytes": 28094464,
+  "samples": 497,
+  "result": {
+    "move": [
+      6,
+      6
+    ],
+    "completed_depth": 4,
+    "phase": "complete",
+    "token": "57a3679d90834f7ea93e15abf237d96f",
+    "done": true,
+    "elapsed": 5.191469399999733,
+    "nodes": 1420,
+    "evaluations": 920,
+    "score": 133,
+    "proof_status": "UNKNOWN",
+    "resource_limits": {
+      "platform": "win32",
+      "supported": true,
+      "enforced": true,
+      "closed": false,
+      "pid": 30452,
+      "memory_limit_mb": 512,
+      "memory_limit_bytes": 536870912,
+      "diagnostic": "Windows Job Object per-process committed-memory cap active"
+    },
+    "timed_out": false
+  },
+  "platform": "Windows native GetProcessMemoryInfo",
+  "limits": {
+    "platform": "win32",
+    "supported": true,
+    "enforced": true,
+    "closed": false,
+    "pid": 30452,
+    "memory_limit_mb": 512,
+    "memory_limit_bytes": 536870912,
+    "diagnostic": "Windows Job Object per-process committed-memory cap active"
+  },
+  "note": "One quiet15x15 position; sampled OS peak counters, not maximum over all possible games."
+}

@@ -6,6 +6,7 @@ Workers never share a live board. Tokens bind results to exact position/context.
 from dataclasses import dataclass
 import json
 import math
+import struct
 import os
 from pathlib import Path
 import subprocess
@@ -40,10 +41,17 @@ class AsyncAI:
     A 2-second startup grace covers Python/NumPy import on Windows; search
     itself uses the engine's normal deadline. Wall cap = budget + grace.
     """
-    def __init__(self, startup_grace=2.0, memory_limit_mb=512):
+    def __init__(self, startup_grace=2.0, memory_limit_mb=None):
         if not math.isfinite(startup_grace) or startup_grace < 0:
             raise ValueError('startup_grace must be finite and nonnegative')
         self.startup_grace = startup_grace
+        if memory_limit_mb is None:
+            # PyInstaller's boot/runtime imports reserve more committed memory
+            # before worker code starts than a plain Python interpreter does.
+            memory_limit_mb = 1024 if getattr(sys, 'frozen', False) else 512
+        max_mib = min(1_048_576, ((1 << (struct.calcsize('P')*8))-1)//(1024*1024))
+        if type(memory_limit_mb) is not int or not 1 <= memory_limit_mb <= max_mib:
+            raise ValueError('memory_limit_mb must be a positive integer fitting native SIZE_T')
         self.memory_limit_mb = memory_limit_mb
         self.task = None
         self.retired = []
@@ -77,8 +85,12 @@ class AsyncAI:
             command = [sys.executable, '--ai-worker', str(request_path)]
         else:
             command = [sys.executable, '-B', str(Path(__file__).with_name('ai_worker.py')), str(request_path)]
+        worker_env = os.environ.copy()
+        # AI uses scalar/grid logic, not BLAS. Thread pools only reserve memory
+        # and oversubscribe a tiny worker; set before importing NumPy there.
+        worker_env.update(OPENBLAS_NUM_THREADS='1', OMP_NUM_THREADS='1', MKL_NUM_THREADS='1')
         kwargs = {'stdin': subprocess.DEVNULL, 'stdout': subprocess.DEVNULL,
-                  'stderr': subprocess.DEVNULL}
+                  'stderr': subprocess.DEVNULL, 'env': worker_env}
         if os.name == 'nt':
             kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
         try:
@@ -94,9 +106,26 @@ class AsyncAI:
             # A tiny worker can finish before job assignment; its work is done
             # and final result still safe to read. Otherwise fail closed.
             if process.poll() is None:
-                process.terminate()
-                process.wait(timeout=1.0)
-                directory.cleanup()
+                # Keep ownership even if termination itself fails. No worker
+                # may escape the adapter's retired/reap lifecycle on this path.
+                failed = _Task(process, directory, token, position_key(board, player, move_count),
+                               time.perf_counter(), budget)
+                self.retired.append(failed)
+                try:
+                    process.terminate()
+                except OSError:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                try:
+                    process.wait(timeout=0.1)
+                except subprocess.TimeoutExpired:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                self.reap()
                 raise
         self.task = _Task(process, directory, token, position_key(board, player, move_count),
                           time.perf_counter(), budget, resources=resources)
@@ -133,6 +162,8 @@ class AsyncAI:
                     not isinstance(p, list) or len(p) != 2 or
                     not all(type(x) is int for x in p) for p in result['invalid_cells'])):
                 return
+            if task.resources is not None:
+                result['resource_limits'] = task.resources.metadata
             task.result = result
             self.last_info = result
         except (OSError, ValueError, OverflowError):

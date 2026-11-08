@@ -1,0 +1,17 @@
+{
+  "limit_mb": 64,
+  "attempted_allocation_mb": 192,
+  "exit_code": 0,
+  "outcome": "MemoryError_as_expected",
+  "metadata": {
+    "platform": "win32",
+    "supported": true,
+    "enforced": true,
+    "closed": false,
+    "pid": 29292,
+    "memory_limit_mb": 64,
+    "memory_limit_bytes": 67108864,
+    "diagnostic": "Windows Job Object per-process committed-memory cap active"
+  },
+  "parent_survived": true
+}

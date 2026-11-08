@@ -541,5 +541,8 @@ def create_ai(difficulty: str, player):
         return AINormal(player)
     if difficulty == 'hard':
         return AIHard(player)
+    if difficulty == 'very_hard':
+        from very_hard import AIVeryHard
+        return AIVeryHard(player)
     logger.warning("Unknown AI difficulty %r; defaulting to Easy", difficulty)
     return AIEasy(player)

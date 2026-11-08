@@ -1,0 +1,522 @@
+[
+  {
+    "file": "benchmarks/results/matches-smoke-0_2.json",
+    "raw_summary": {
+      "games": 8,
+      "wins": 8,
+      "losses": 0,
+      "draws": 0,
+      "censored": 0,
+      "errors": 0,
+      "decisive_win_fraction": 1.0,
+      "wilson95_decisive": [
+        0.6755924351161198,
+        1
+      ],
+      "caution": "Wilson treats games independent; color-paired correlated games/openings reduce effective sample size; not a release strength PASS by itself."
+    },
+    "unique_openings": 4,
+    "positive_opening_groups": 4,
+    "negative_opening_groups": 0,
+    "tied_opening_groups": 0,
+    "wilson95_positive_nontied_opening_fraction": [
+      0.5101091635454027,
+      1
+    ],
+    "groups": [
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      }
+    ],
+    "overshoot_over_100ms": [],
+    "caution": "Both confidence intervals are descriptive. Openings are purposively selected, small and correlated; repeats do not create independent samples or universal Elo/strength claims."
+  },
+  {
+    "file": "benchmarks/results/matches-equal-hard-1_5.json",
+    "raw_summary": {
+      "games": 24,
+      "wins": 20,
+      "losses": 4,
+      "draws": 0,
+      "censored": 0,
+      "errors": 0,
+      "decisive_win_fraction": 0.8333333333333334,
+      "wilson95_decisive": [
+        0.6414692935030095,
+        0.9332132367136705
+      ],
+      "caution": "Wilson treats games independent; color-paired correlated games/openings reduce effective sample size; not a release strength PASS by itself."
+    },
+    "unique_openings": 8,
+    "positive_opening_groups": 5,
+    "negative_opening_groups": 0,
+    "tied_opening_groups": 3,
+    "wilson95_positive_nontied_opening_fraction": [
+      0.5655175352168251,
+      1
+    ],
+    "groups": [
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "games": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            7
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      }
+    ],
+    "overshoot_over_100ms": [],
+    "caution": "Both confidence intervals are descriptive. Openings are purposively selected, small and correlated; repeats do not create independent samples or universal Elo/strength claims."
+  },
+  {
+    "file": "benchmarks/results/matches-equal-old-1_5.json",
+    "raw_summary": {
+      "games": 24,
+      "wins": 22,
+      "losses": 2,
+      "draws": 0,
+      "censored": 0,
+      "errors": 0,
+      "decisive_win_fraction": 0.9166666666666666,
+      "wilson95_decisive": [
+        0.741511978067893,
+        0.9768411847029567
+      ],
+      "caution": "Wilson treats games independent; color-paired correlated games/openings reduce effective sample size; not a release strength PASS by itself."
+    },
+    "unique_openings": 8,
+    "positive_opening_groups": 7,
+    "negative_opening_groups": 0,
+    "tied_opening_groups": 1,
+    "wilson95_positive_nontied_opening_fraction": [
+      0.6456695649333126,
+      1
+    ],
+    "groups": [
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "games": 4,
+        "wins": 2,
+        "losses": 2,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "games": 4,
+        "wins": 4,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            7
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            6,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      }
+    ],
+    "overshoot_over_100ms": [
+      {
+        "id": 8,
+        "color": "2",
+        "max": 1.612699799999973,
+        "limit": 1.5
+      },
+      {
+        "id": 19,
+        "color": "1",
+        "max": 1.6134269999993194,
+        "limit": 1.5
+      }
+    ],
+    "caution": "Both confidence intervals are descriptive. Openings are purposively selected, small and correlated; repeats do not create independent samples or universal Elo/strength claims."
+  }
+]

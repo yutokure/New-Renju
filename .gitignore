@@ -1,3 +1,8 @@
+# Local diagnostics can contain host-specific permission identifiers.
+benchmarks/results/acl-frozen-recovery/
+benchmarks/results/frozen-debug/
+benchmarks/results/*-console.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -31,6 +36,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!New-Renju.spec
 
 # Installer logs
 pip-log.txt

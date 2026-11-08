@@ -12,7 +12,7 @@ from constants import (
     PLACING_ANIMATION_DURATION, PLACING_ANIMATION_START_SCALE # Added PLACING_ANIMATION_DURATION and PLACING_ANIMATION_START_SCALE constants
 )
 from board import (
-    DIRECTIONS, Board, BLACK as BOARD_BLACK, WHITE as BOARD_WHITE, EMPTY,
+    DIRECTIONS, Board, RuleValidationTimeout, BLACK as BOARD_BLACK, WHITE as BOARD_WHITE, EMPTY,
     THREAT_OPEN_THREE, THREAT_CLOSED_FOUR, THREAT_OPEN_FOUR # 追加
 )
 from ui import Button, Checkbox, Telop, TextPopup # Added TextPopup import
@@ -45,7 +45,8 @@ class Game:
         self.game_over_font = pygame.font.Font(None, 72)
         # --- Use a Japanese Font --- #
         # !!! Replace with the actual path to your Japanese font file !!!
-        japanese_font_path = "./fonts/YasashisaGothicBold-V2.otf"
+        from resources import asset_path
+        japanese_font_path = asset_path('fonts/YasashisaGothicBold-V2.otf')
         try:
             self.telop_font = pygame.font.Font(japanese_font_path, 48)
         except pygame.error as e:
@@ -79,6 +80,9 @@ class Game:
         self.analysis_runner = AsyncAI()
         self._analysis_key = None
         self._visual_key = None
+        self._overlay_key = None
+        self._overlay_done_key = None
+        self._overlay_invalid = []
         self._visual_threats = []
         self._invalid_cells = []
         self.reset_game()
@@ -98,6 +102,9 @@ class Game:
         self.ai_thinking = False
         self.evaluation_in_progress = False
         self._analysis_key = None
+        self._overlay_key = None
+        self._overlay_done_key = None
+        self._overlay_invalid = []
         self._visual_key = None
 
     def reset_game(self, move_history_to_load=None):
@@ -157,6 +164,7 @@ class Game:
                 self.settings.ai_difficulty, BOARD_WHITE
             )
 
+        self.board.validation_budget_sec = 0.012  # Query timeout is UNKNOWN, never a foul.
         self.needs_redraw = True
         self.ai_thinking = False
         # self.move_history = [] # Already initialized or loaded above
@@ -536,6 +544,10 @@ class Game:
         ]
 
         save_data = {
+            "schema_version": 2,
+            "rules": {"ruleset": self.board.ruleset,
+                      "opening_policy": self.board.opening_policy,
+                      "legacy_save_migration": "layouts-preserved-current-adjudication"},
             "settings": serializable_settings,
             "move_history": serializable_history,
         }
@@ -691,6 +703,14 @@ class Game:
              print(f"DEBUG: Animation started. Total blinking stones: {len(self.animating_stones)}")
 
     def _make_move(self, row, col):
+        try:
+            return self._apply_move(row, col)
+        except RuleValidationTimeout:
+            self.telop.show('判定未完了：この手は適用していません', 2000)
+            self.needs_redraw = True
+            return False
+
+    def _apply_move(self, row, col):
          """Attempts to make a move, checks win/threats/joseki, switches player, starts animation."""
          current_player = self.current_player
          opponent_player = BOARD_WHITE if current_player == BOARD_BLACK else BOARD_BLACK
@@ -930,6 +950,8 @@ class Game:
         self.ai_runner.reap()
         self.analysis_runner.reap()
         self._poll_analysis()
+        if not self.ai_thinking:
+            self._queue_legality_overlay()
         if self.game_over or self.is_history_mode or is_animating or placing_anim_active:
             if self.ai_thinking:
                 self.ai_runner.cancel()
@@ -1008,8 +1030,12 @@ class Game:
         if key != self._visual_key:
             self._visual_key = key
             self._visual_threats = board.find_threats(BOARD_BLACK) + board.find_threats(BOARD_WHITE)
+            # Opening geometry is cheap. Exhaustive recursive forbidden
+            # adjudication is detached, never part of an animation frame.
             self._invalid_cells = [tuple(map(int, p)) for p in board.get_empty_cells()
-                                   if not board.is_valid_move(*p, player, count)]
+                                   if not board._opening_allows(*p, count)]
+        if self._overlay_done_key == key:
+            self._invalid_cells = list(set(self._invalid_cells) | set(self._overlay_invalid))
 
     def _draw_threat_and_win_lines(self):
         """Draws threat lines and the win line (uses self.cell_size)."""
@@ -1082,7 +1108,7 @@ class Game:
             current_player_at_index = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
         elif self.ai_thinking:
              status_text_str = "AI Thinking... {:.1f}s depth {}".format(
-                 self.ai_runner.last_info.get('elapsed', 0.0),
+                 (time.perf_counter() - self.ai_runner.task.started) if self.ai_runner.task else self.ai_runner.last_info.get('elapsed', 0.0),
                  self.ai_runner.last_info.get('completed_depth', 0))
              # Assign current player for indicator color during AI thinking
              current_player_at_index = self.current_player
@@ -1159,6 +1185,24 @@ class Game:
         self.evaluation_in_progress = True
         self.needs_redraw = True
 
+    def _queue_legality_overlay(self):
+        if self.analysis_runner.busy or self.is_history_mode or self.game_over or not self._is_human_turn():
+            return
+        count = len(self.move_history)
+        key = position_key(self.board, self.current_player, count)
+        if self._overlay_key == key:
+            return
+        if self.current_player != BOARD_BLACK or self.board.win_length != 5:
+            self._overlay_key = self._overlay_done_key = key
+            self._overlay_invalid = []
+            return
+        try:
+            self.analysis_runner.start(self.board, self.current_player, count, 'hard',
+                                       budget=1.5, kind='legality')
+        except (OSError, ValueError):
+            logger.exception('Cannot start legality overlay worker')
+        self._overlay_key = key
+
     def _poll_analysis(self):
         if not self.analysis_runner.busy:
             return
@@ -1167,6 +1211,12 @@ class Game:
         player = BOARD_BLACK if count % 2 == 0 else BOARD_WHITE
         result = self.analysis_runner.poll(board, player, count)
         if result is not None:
+            if result.get('legality_complete'):
+                self._overlay_done_key = position_key(board, player, count)
+                self._overlay_key = self._overlay_done_key
+                self._overlay_invalid = [tuple(p) for p in result.get('invalid_cells', [])
+                                         if board.is_within_bounds(*p)]
+                self._visual_key = None
             self.evaluation_cache = {(r, c): score for r, c, score in result.get('scores', [])
                                      if board.is_within_bounds(r, c) and board.is_empty(r, c)}
             self.evaluation_in_progress = False
