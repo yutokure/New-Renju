@@ -137,3 +137,20 @@ No executable was built or launched. The `sys.frozen` self-launch command and di
 ### Playing strength and full rules — not certified
 
 No strength games or performance benchmark were authorized/run by this reviewer. Tactical fixtures, sampled minimax comparisons, and preserved architecture do not prove no playing-strength regression. Full official Renju legality/proof-search work is explicitly outside Phase A; the contiguous-only checker and greedy static evaluator remain heuristics. The parent owns these separate acceptance decisions.
+
+## Follow-up: final-result read race, commit `9b20bc6`
+
+**Verdict: PASS / safe for this narrow patch.** Independently inspected the patch and regression on 2026-11-08 in the separate Hard review worktree. Only this document was modified by the reviewer. No broad test suite, benchmark, strength match, real GUI, or executable run was performed for this follow-up.
+
+### R5 — MEDIUM — Progress-read throttle could discard an available final worker result — RESOLVED
+
+- Relevant changes: [forced-result read, ai_async.py:88–95](<../ai_async.py#L88-L95>), [exit/watchdog reread before retirement, ai_async.py:126–146](<../ai_async.py#L126-L146>), and [regression, test_async_ui.py:86–99](<../tests/test_async_ui.py#L86-L99>).
+- Reproduction: retain an earlier incomplete progress packet, set `task.read_after` into the future, write a newer valid `done=True` result, and observe worker exit or watchdog expiry before the next scheduled progress read. Previously, `poll` could skip the file read and immediately retire the task using stale progress or report no result. A successfully completed higher-quality move could be lost solely because of polling timing.
+- The repair retains the 30 ms throttle for normal progress reads, but bypasses it when process exit or expiry makes the poll final. It recomputes `done` after that forced read, before selecting the result or setting `timed_out`. Token/schema validation and live-move legality checks remain in place. An unreadable/invalid last packet does not erase a previously valid progress result. At watchdog expiry, a packet written only after the final read can still be excluded; that is a legitimate cutoff, not a promise to await future worker writes.
+- Independently ran **two lightweight deterministic probes**, with temporary JSON files and fake process/board objects, without launching an AI subprocess or importing NumPy: (1) exited process with budget still remaining; (2) watchdog expired with process still running. Both started with a stale legal incomplete move and a future `read_after`, then returned the newer final legal move, `timed_out=False`, and cleared the active task. **Both passed.**
+- **LOW, nonblocking coverage note:** the committed regression sets `budget=0` and `startup_grace=0`, so it deterministically exercises the **watchdog** trigger; its name alone does not prove the independent exit-only path. The reviewer probe separately covered exit-only. A future parameterized regression using a fake process/clock could preserve both paths without process-startup timing. This is not a remaining source blocker.
+- The parent's reported local 21-test result was not rerun by this follow-up reviewer; it is distinct from the two independent probes above. The earlier 93-test result in this document is historical, not a claim that the full suite was rerun at this commit.
+
+### Owner's local-only validation policy
+
+The owner explicitly requested **no CI**, and the parent reports CI configuration was removed from both branches/PRs. CI support is **not** a deliverable or recommendation of this review. Validation remains local and scoped; no CI file was created, restored, or modified here. Existing real-GUI, packaged-executable, full-rule, and playing-strength evidence limits remain unchanged by this polling fix.
