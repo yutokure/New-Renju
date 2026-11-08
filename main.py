@@ -39,6 +39,8 @@ from settings import Settings
 from game import Game  # Import the Game class
 
 from save_data import read_save, LoadTask
+from ui_text import rules_label, MODE_LABELS
+from rule_panel import draw_rules, close_button
 
 
 def _load_game_data(filename="gomoku_save.json"):
@@ -119,7 +121,8 @@ def main(worker_directory=None):
     quit_button = Button(
         "Quit", (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 175), menu_font
     )
-    menu_buttons = [start_button, load_button, settings_button, quit_button]
+    rules_menu_button = Button('Rules & controls', (SCREEN_WIDTH//2, SCREEN_HEIGHT-45), list_font)
+    menu_buttons = [start_button, load_button, settings_button, quit_button, rules_menu_button]
 
     # --- Settings UI Elements Layout ---
     settings_title_text = menu_font.render("Settings", True, TEXT_COLOR)
@@ -127,9 +130,9 @@ def main(worker_directory=None):
         center=(SCREEN_WIDTH // 2, 80)
     )
     y_offset = 150
-    label_x = 100
-    value_x = 350
-    value_width = 200
+    label_x = 70
+    value_x = 315
+    value_width = 260
     button_offset = 35
     line_height = 60
 
@@ -141,10 +144,10 @@ def main(worker_directory=None):
         next_pos = (value_rect.right + button_offset, value_rect.centery)
         prev_pos = (value_rect.left - button_offset, value_rect.centery)
         next_button = Button(
-            ">", next_pos, settings_button_font, text_color=GRAY
+            ">", next_pos, settings_button_font, text_color=TEXT_COLOR
         )
         prev_button = Button(
-            "<", prev_pos, settings_button_font, text_color=GRAY
+            "<", prev_pos, settings_button_font, text_color=TEXT_COLOR
         )
         return label, label_rect, value_rect, prev_button, next_button
 
@@ -220,58 +223,13 @@ def main(worker_directory=None):
     load_task = None
     load_notice = ''
     menu_notice = ''
+    rules_visible = False
     while running:
         ai_active = PLAYER_AI in settings.game_mode
         settings_value_renders = {} # Initialize here, ensuring it always exists
 
-        # --- Render Setting Values (only when in settings state) ---
-        if game_state == STATE_SETTINGS:
-            board_size_value_text = settings_value_font.render(
-                f"{settings.board_size}x{settings.board_size}", True, GRAY
-            )
-            board_size_value_text_rect = board_size_value_text.get_rect(
-                center=board_size_value_rect.center
-            )
-            win_length_value_text = settings_value_font.render(
-                f"{settings.win_length}", True, GRAY
-            )
-            win_length_value_text_rect = win_length_value_text.get_rect(
-                center=win_length_value_rect.center
-            )
-            mode_map = {
-                (PLAYER_HUMAN, PLAYER_HUMAN): "Human vs Human",
-                (PLAYER_HUMAN, PLAYER_AI): "Human vs AI",
-                (PLAYER_AI, PLAYER_HUMAN): "AI vs Human",
-                (PLAYER_AI, PLAYER_AI): "AI vs AI",
-            }
-            game_mode_value_str = mode_map.get(settings.game_mode, "Unknown")
-            game_mode_value_text = settings_value_font.render(
-                game_mode_value_str, True, GRAY
-            )
-            game_mode_value_text_rect = game_mode_value_text.get_rect(
-                center=game_mode_value_rect.center
-            )
-            ai_difficulty_str = (
-                AI_LABELS.get(settings.ai_difficulty, settings.ai_difficulty) if ai_active else "N/A"
-            )
-            ai_difficulty_value_text = settings_value_font.render(
-                ai_difficulty_str, True, GRAY
-            )
-            ai_difficulty_value_text_rect = ai_difficulty_value_text.get_rect(
-                center=ai_difficulty_value_rect.center
-            )
-            # Store renders needed for drawing this frame
-            settings_value_renders = {
-                "board_size": (board_size_value_text, board_size_value_text_rect),
-                "win_length": (win_length_value_text, win_length_value_text_rect),
-                "game_mode": (game_mode_value_text, game_mode_value_text_rect),
-                "ai_difficulty": (
-                    ai_difficulty_value_text, ai_difficulty_value_text_rect
-                ),
-            }
-
         # --- Event Handling ---
-        event_context = (game_state, current_game, current_page,
+        event_context = (game_state, current_game, current_page, rules_visible,
                          getattr(current_game, 'input_epoch', None))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -280,10 +238,18 @@ def main(worker_directory=None):
                 break
             # Inputs queued for an old screen/replay generation do not belong
             # to its replacement. QUIT above is never discarded.
-            if event_context != (game_state, current_game, current_page,
+            if event_context != (game_state, current_game, current_page, rules_visible,
                                  getattr(current_game, 'input_epoch', None)):
                 continue
 
+            if rules_visible:
+                if ((event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)
+                        or close_button(list_font).handle_event(event)):
+                    rules_visible = False
+                continue
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_state == STATE_SETTINGS:
+                game_state = STATE_MENU
+                continue
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_state == STATE_LOAD_SELECT:
                 if load_task is not None:
                     load_task.cancel()
@@ -312,6 +278,8 @@ def main(worker_directory=None):
                         update_load_list_buttons()
                         game_state = STATE_LOAD_SELECT
                         print(f"Entering Load Select. Found {len(save_files)} save files.")
+                    elif result == "Rules & controls":
+                        rules_visible = True
                     elif result == "Settings":
                         game_state = STATE_SETTINGS
                     elif result == "Quit":
@@ -444,6 +412,52 @@ def main(worker_directory=None):
         if game_state == STATE_GAME and current_game:
             current_game.update()
 
+        # --- Render Setting Values (only when in settings state) ---
+        if game_state == STATE_SETTINGS:
+            board_size_value_text = settings_value_font.render(
+                f"{settings.board_size}x{settings.board_size}", True, TEXT_COLOR
+            )
+            board_size_value_text_rect = board_size_value_text.get_rect(
+                center=board_size_value_rect.center
+            )
+            win_length_value_text = settings_value_font.render(
+                f"{settings.win_length}", True, TEXT_COLOR
+            )
+            win_length_value_text_rect = win_length_value_text.get_rect(
+                center=win_length_value_rect.center
+            )
+            mode_map = {
+                (PLAYER_HUMAN, PLAYER_HUMAN): "Human vs Human",
+                (PLAYER_HUMAN, PLAYER_AI): "Human vs AI",
+                (PLAYER_AI, PLAYER_HUMAN): "AI vs Human",
+                (PLAYER_AI, PLAYER_AI): "AI vs AI",
+            }
+            game_mode_value_str = mode_map.get(settings.game_mode, "Unknown")
+            game_mode_value_text = settings_value_font.render(
+                game_mode_value_str, True, TEXT_COLOR
+            )
+            game_mode_value_text_rect = game_mode_value_text.get_rect(
+                center=game_mode_value_rect.center
+            )
+            ai_difficulty_str = (
+                AI_LABELS.get(settings.ai_difficulty, settings.ai_difficulty) if ai_active else "N/A"
+            )
+            ai_difficulty_value_text = settings_value_font.render(
+                ai_difficulty_str, True, TEXT_COLOR
+            )
+            ai_difficulty_value_text_rect = ai_difficulty_value_text.get_rect(
+                center=ai_difficulty_value_rect.center
+            )
+            # Store renders needed for drawing this frame
+            settings_value_renders = {
+                "board_size": (board_size_value_text, board_size_value_text_rect),
+                "win_length": (win_length_value_text, win_length_value_text_rect),
+                "game_mode": (game_mode_value_text, game_mode_value_text_rect),
+                "ai_difficulty": (
+                    ai_difficulty_value_text, ai_difficulty_value_text_rect
+                ),
+            }
+
         # --- Drawing by State ---
         # screen.fill(WHITE)  # Remove default background fill here
 
@@ -483,6 +497,14 @@ def main(worker_directory=None):
                 ai_difficulty_prev_button.draw(screen)
                 ai_difficulty_next_button.draw(screen)
             back_button.draw(screen)
+            hint_font = pygame.font.Font(None,24)
+            hints = [rules_label(settings),
+                     'Black = first player (left). White = second player (right).',
+                     'Opening: center, then above / above-right, then central 5x5.',
+                     'Simplified opening, not tournament rules. See Rules in Menu.']
+            for index,hint in enumerate(hints):
+                rendered = hint_font.render(hint,True,TEXT_COLOR)
+                screen.blit(rendered,rendered.get_rect(center=(SCREEN_WIDTH//2,410+index*22)))
 
         elif game_state == STATE_LOAD_SELECT:
             screen.fill(WHITE) # ★★★ Add background fill for Load Select ★★★
@@ -517,6 +539,8 @@ def main(worker_directory=None):
                 rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
                 screen.blit(text, rect)
 
+        if rules_visible:
+            draw_rules(screen,settings,pygame.font.Font(None,24))
         pygame.display.flip()
         clock.tick(60)
 

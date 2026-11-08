@@ -16,6 +16,7 @@ from board import (
 from ui import Button, Checkbox, Telop, TextPopup # Added TextPopup import
 from ai import create_ai, AIHard
 from ai_async import AsyncAI, position_key
+from ui_text import rules_label, mode_label, rules_help, MOVE_REASONS
 import time
 import logging
 
@@ -126,6 +127,8 @@ class Game:
         self._overlay_invalid = []
         self._visual_key = None
         self.evaluation_cache = {}
+        self.analysis_status = 'off'
+        self.overlay_status = 'not checked'
         self.needs_redraw = True
 
     def _clear_transient_visuals(self):
@@ -170,6 +173,10 @@ class Game:
             # Live play retains the last mover after a terminal placement.
             self.current_player = BOARD_WHITE if self.current_player == BOARD_BLACK else BOARD_BLACK
         self.save_notice = None
+        self.invalid_reason = None
+        self.overlay_status = 'not checked'
+        self.analysis_status = 'off'
+        self.rules_visible = False
 
         # Black always makes the first stone. Player types, not stone colors,
         # determine which side is AI (including old ai_starts save metadata).
@@ -211,7 +218,7 @@ class Game:
         # Define Y positions for top elements
         top_status_y = 20
         top_button_y = 60
-        min_top_margin_for_board = top_button_y + 40 # Space above board below buttons
+        min_top_margin_for_board = top_button_y + 100 # Space above board below buttons
         min_bottom_margin_for_board = 80 # Space below board above history buttons
 
         # Calculate max possible board area height based on UI margins
@@ -242,6 +249,7 @@ class Game:
         self.save_button = Button("Save Game", (self.back_button.rect.left - save_button_width_estimate - save_button_spacing, top_button_y), self.font, width=save_button_width_estimate)
         # Research Mode Checkbox (Far Left Top)
         self.research_mode_checkbox = Checkbox("Research: Hard static", (20, top_button_y), self.small_font)
+        self.rules_button = Button("Rules", (350, top_button_y), self.small_font, width=80)
 
         # Game Over Buttons (Center Screen)
         button_y_gameover = SCREEN_HEIGHT // 2 + 100
@@ -257,7 +265,7 @@ class Game:
         self.next_move_button = Button("Next >", (history_btn_x_center + 80, history_btn_y), self.font)
 
         # Show "Game Start" telop
-        self.telop.show("対局開始", 2000) # Show for 2 seconds
+        self.telop.show("Game started", 1000) # Show for 2 seconds
         # Rendering belongs to the main loop after candidate publication. A
         # staged load must not draw/flip a partially constructed replacement.
 
@@ -573,6 +581,19 @@ class Game:
         """Handles events for game screen, including history and save buttons."""
         if event.type == pygame.MOUSEMOTION:
             self.needs_redraw = True
+        if self.rules_visible:
+            from rule_panel import close_button
+            if ((event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE)
+                    or close_button(self.small_font).handle_event(event)):
+                self.rules_visible = False
+                self.input_epoch += 1
+                self.needs_redraw = True
+            return None
+        if self.rules_button.handle_event(event) == 'Rules':
+            self._cancel_work()
+            self._clear_transient_visuals()
+            self.rules_visible = True
+            return None
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return STATE_MENU
@@ -584,6 +605,10 @@ class Game:
             retry = self._validation_retry
             if retry is not None and retry['position'] == position_key(self.board, self.current_player, len(self.move_history)):
                 self._queue_move_validation(*retry['candidate'])
+            elif retry is None:
+                self._analysis_key = self._overlay_key = None
+                self.analysis_status = self.overlay_status = 'retry requested'
+                self.needs_redraw = True
             return None
         # Always handle Menu button
         if self.back_button.handle_event(event) == "Menu":
@@ -715,6 +740,8 @@ class Game:
     @property
     def interaction_state(self):
         """Authoritative input state; UNKNOWN remains a distinct retry state."""
+        if self.rules_visible:
+            return 'rules'
         if self.is_history_mode:
             return 'history'
         if self.game_over:
@@ -771,12 +798,12 @@ class Game:
             self._pending_validation = None
             self._validation_retry = pending
             self.validation_status = 'unknown'
-            self.telop.show('判定未完了：Rで再判定できます', 2500)
+            self.telop.show('Unconfirmed: R to retry', 2500)
             self.needs_redraw = True
             return False
         self._pending_validation = pending
         self.validation_status = 'pending'
-        self.telop.show('禁手・合法性を確認中...', None)
+        self.telop.show('Checking move legality...', None)
         self.needs_redraw = True
         return True
 
@@ -833,18 +860,19 @@ class Game:
             self.invalid_move_timer = pygame.time.get_ticks()
             if not self._is_human_turn():
                 self.ai_error = 'Illegal AI move (Menu to retry)'
-            self.telop.show('この手は禁手または無効です', 2500)
+            self.invalid_reason = MOVE_REASONS.get(result.get('verdict', {}).get('reason'), 'Invalid move.')
             return
         self.validation_status = 'unknown'
         self._validation_retry = pending
-        self.telop.show('判定未完了：未着手です。Rで再判定', 2500)
+        self.telop.show('Unplayed: R to retry check', 2500)
 
     def _apply_move(self, row, col):
          """Attempts to make a move, checks win/threats/joseki, switches player, starts animation."""
          current_player = self.current_player
          opponent_player = BOARD_WHITE if current_player == BOARD_BLACK else BOARD_BLACK
          # Get threats *before* the move
-         threats_before_list = self.board.find_threats(current_player) + self.board.find_threats(opponent_player)
+         own_before = self.board.find_threats(current_player)
+         other_before = self.board.find_threats(opponent_player)
 
          move_count = len(self.move_history)
          if self.board.place_stone(row, col, current_player, move_count):
@@ -855,8 +883,13 @@ class Game:
             self.analysis_runner.cancel()
             self.evaluation_in_progress = False
             self.evaluation_cache.clear()
+            self.analysis_status = 'not checked'
+            self.overlay_status = 'not checked'
+            self._overlay_key = self._overlay_done_key = None
+            self._overlay_invalid = []
             self.display_move_index = len(self.move_history)
             self.invalid_move_pos = None # Clear invalid click feedback
+            self.invalid_reason = None
             self.win_line = None
 
             # Check Joseki
@@ -887,25 +920,18 @@ class Game:
                 else:
                     self._switch_player()
 
-            # Get threats *after* the move
-            threats_after_list = self.board.find_threats(current_player) + self.board.find_threats(opponent_player)
-
-            # Compare threat sets based on frozenset of stone coordinates
-            def get_threat_id(threat_info):
-                # Ensure threat_info has the 5th element (player_stone_coords)
-                if len(threat_info) >= 5 and isinstance(threat_info[4], list):
-                    return frozenset(threat_info[4])
-                return None # Return None if format is unexpected
-
-            threat_ids_before = {get_threat_id(t) for t in threats_before_list if get_threat_id(t)}
-            threat_ids_after = {get_threat_id(t) for t in threats_after_list if get_threat_id(t)}
-
-            added_threat_ids = threat_ids_after - threat_ids_before
-            removed_threat_ids = threat_ids_before - threat_ids_after
-
-            # Get the full threat info tuples corresponding to the added/removed IDs
-            added_threats_info = [t for t in threats_after_list if get_threat_id(t) in added_threat_ids]
-            removed_threats_info = [t for t in threats_before_list if get_threat_id(t) in removed_threat_ids]
+            # Display-only deltas preserve owner and pattern type. A consumed
+            # own four is not defense; opponent open->closed is a downgrade.
+            own_after = self.board.find_threats(current_player)
+            other_after = self.board.find_threats(opponent_player)
+            def hint_id(t):
+                return (t[0], t[3], frozenset(t[4]))
+            own_before_ids = {hint_id(t) for t in own_before}
+            other_after_ids = {hint_id(t) for t in other_after}
+            added_threats_info = [t for t in own_after if hint_id(t) not in own_before_ids]
+            removed_threats_info = [t for t in other_before if hint_id(t) not in other_after_ids]
+            if self.game_over:
+                added_threats_info, removed_threats_info = [], []
 
             # --- Start Placing Animation --- #
             self.placing_stone_animation = True
@@ -930,7 +956,7 @@ class Game:
                 # Increment pursuit count for the player who moved
                 self.consecutive_pursuit_count[player_who_moved] += 1
                 count = self.consecutive_pursuit_count[player_who_moved]
-                popup_text = "追い手" if count == 1 else f"追い手×{count}"
+                popup_text = "Pressure" if count == 1 else f"Pressure x{count}"
                 popups_to_add.append({"text": popup_text, "color": POPUP_COLOR_PURSUIT})
                 pursuit_added = True # Set flag to skip other checks
                 print(f"DEBUG Popups: '{popup_text}' triggered at {move_pos} for player {player_who_moved} (Count: {count})")
@@ -940,14 +966,14 @@ class Game:
 
                 # Check for defense and attack only if no pursuit was added
                 if removed_threats_info:
-                    popups_to_add.append({"text": "防手", "color": POPUP_COLOR_DEFENSE})
+                    popups_to_add.append({"text": "Defense", "color": POPUP_COLOR_DEFENSE})
                     defense_added = True
                     print(f"DEBUG Popups: '防手' triggered at {move_pos}")
 
                 # Check for "攻手"
-                if self._check_if_move_created_three(self.board, row, col, player_who_moved):
+                if not self.game_over and self.board.win_length == 5 and self._check_if_move_created_three(self.board, row, col, player_who_moved):
                     # Add attack popup (stacking will handle if defense also added)
-                    popups_to_add.append({"text": "攻手", "color": POPUP_COLOR_ATTACK})
+                    popups_to_add.append({"text": "Attack", "color": POPUP_COLOR_ATTACK})
                     print(f"DEBUG Popups: '攻手' triggered at {move_pos}")
 
             # --- Add and stack popups --- #
@@ -972,6 +998,15 @@ class Game:
          else:
             # Invalid move attempted
             print("Invalid move.")
+            if not self.board.is_within_bounds(row, col):
+                reason = 'out_of_bounds'
+            elif not self.board.is_empty(row, col):
+                reason = 'occupied'
+            elif not self.board._opening_allows(row, col, move_count):
+                reason = 'opening'
+            else:
+                reason = 'forbidden'
+            self.invalid_reason = MOVE_REASONS[reason]
             self.invalid_move_pos = (row, col) # Store position for feedback circle
             self.invalid_move_timer = pygame.time.get_ticks() # Start feedback timer
             self.needs_redraw = True # Need to redraw to show feedback
@@ -1006,6 +1041,11 @@ class Game:
 
     def update(self):
         """Handles AI moves, UI element updates, and animations."""
+        if self.rules_visible:
+            self.ai_runner.reap()
+            self.analysis_runner.reap()
+            self.validation_runner.reap()
+            return
         # self.joseki_popup.update() # Removed JosekiPopup update
 
         # Update invalid move feedback timer
@@ -1119,7 +1159,7 @@ class Game:
                 self.needs_redraw = True
                 return
             self.ai_thinking = True
-            self.telop.show("思考中...", None)
+            self.telop.show("AI thinking...", None)
             self.needs_redraw = True
         elif self.research_mode_enabled and self._is_human_turn():
             self._evaluate_empty_cells()
@@ -1234,54 +1274,48 @@ class Game:
             win_color = RED
             pygame.draw.line(self.screen, win_color, start_pos_screen_win, end_pos_screen_win, WIN_LINE_WIDTH)
 
-    def _draw_status_and_turn(self):
-        """Draws the top status text (turn/history) and player indicator stone."""
-        status_text_str = ""
+    def status_text(self):
+        side = 'Black' if self.current_player == BOARD_BLACK else 'White'
         if self.is_history_mode:
-            status_text_str = f"History: Move {self.display_move_index} / {len(self.move_history)}"
-            current_player_at_index = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
-        elif self._pending_validation is not None:
-            status_text_str = 'Checking move legality...'
-            current_player_at_index = self.current_player
-        elif self.validation_status == 'unknown':
-            status_text_str = 'Rule check UNKNOWN - R to retry'
-            current_player_at_index = self.current_player
-        elif self.validation_status == 'illegal':
-            status_text_str = 'Invalid move - choose another'
-            current_player_at_index = self.current_player
-        elif self.ai_thinking:
-             status_text_str = "AI Thinking... {:.1f}s depth {}".format(
-                 (time.perf_counter() - self.ai_runner.task.started) if self.ai_runner.task else self.ai_runner.last_info.get('elapsed', 0.0),
-                 self.ai_runner.last_info.get('completed_depth', 0))
-             # Assign current player for indicator color during AI thinking
-             current_player_at_index = self.current_player
+            return f'History: {self.display_move_index} / {len(self.move_history)} - Next to return'
+        if self.game_over:
+            return 'Game over - Rematch or Menu'
+        if self.ai_error:
+            return 'AI unavailable - Menu to start another game'
+        if self._pending_validation is not None:
+            return 'Checking move legality - unplayed'
+        if self.validation_status == 'unknown':
+            return ('UNKNOWN / unplayed - R to retry, or choose another point' if self._is_human_turn()
+                    else 'UNKNOWN / unplayed - R to retry, or Menu')
+        if self.invalid_reason:
+            return self.invalid_reason
+        if self.ai_thinking:
+            task = self.ai_runner.task
+            elapsed = time.perf_counter()-task.started if task else self.ai_runner.last_info.get('elapsed',0)
+            return f"AI thinking: {elapsed:.1f}s / completed depth {self.ai_runner.last_info.get('completed_depth',0)}"
+        if len(self.move_history) < 3:
+            return f'{side} to move - simplified opening (shaded points unavailable)'
+        return f'{side} to move' + (' - animating' if self.interaction_state == 'animating' else '')
+
+    def _draw_status_and_turn(self):
+        lines = [(self.status_text(), 20),
+                 (mode_label(self.settings) + ' | ' + f'{self.board.size}x{self.board.size}', 95),
+                 (rules_label(self.settings), 116)]
+        if self.research_mode_enabled:
+            hint = f'Research: Hard static / {self.analysis_status} / NOT a win proof'
+        elif self.board.win_length == 5:
+            hint = f'Pattern hints only | restrictions: {self.overlay_status} | unmarked != legal'
         else:
-            turn_str = "Black" if self.current_player == BOARD_BLACK else "White"
-            status_text_str = "AI error (Menu to retry)" if self.ai_error else f"Turn: {turn_str}"
-            current_player_at_index = self.current_player
-
-        status_text = self._cached_text(self.font, status_text_str, TEXT_COLOR)
-        status_rect = status_text.get_rect(center=(SCREEN_WIDTH // 2, 30))
-        # Background rectangle centered with the text
-        bg_rect = status_rect.inflate(60, 10) # Increased horizontal padding
-        bg_rect.center = status_rect.center # Ensure bg is centered on text
-        pygame.draw.rect(self.screen, BOARD_COLOR, bg_rect, border_radius=5)
-        pygame.draw.rect(self.screen, LINE_COLOR, bg_rect, 1, border_radius=5)
-        self.screen.blit(status_text, status_rect)
-
-        # Turn indicator circle (Positioned LEFT of the text background)
-        # Define top_status_y in reset_game or here if static
-        top_status_y = 20 # Match the value used for status_rect centering
-        if not self.game_over or self.is_history_mode:
-            indicator_radius = 10
-            # Position indicator left of the status text background
-            indicator_x = bg_rect.left - 20 # Position left of the background rect
-            indicator_y = top_status_y # Align vertically with the status text center
-            indicator_color = BLACK if current_player_at_index == BOARD_BLACK else WHITE
-            pygame.draw.circle(self.screen, indicator_color, (indicator_x, indicator_y), indicator_radius)
-            pygame.draw.circle(self.screen, TEXT_COLOR, (indicator_x, indicator_y), indicator_radius, 1)
-
-        self.back_button.draw(self.screen) # Draw menu button (already positioned top-right)
+            hint = 'Custom target: 5-only threat / attack hints disabled'
+        lines.append((hint,137))
+        for text,y in lines:
+            surface = self._cached_text(self.small_font,text,TEXT_COLOR)
+            if surface.get_width() > SCREEN_WIDTH-24:
+                surface = pygame.transform.smoothscale(surface,
+                    (SCREEN_WIDTH-24, max(16, int(surface.get_height()*(SCREEN_WIDTH-24)/surface.get_width()))))
+            self.screen.blit(surface,surface.get_rect(center=(SCREEN_WIDTH//2,y)))
+        self.back_button.draw(self.screen)
+        self.rules_button.draw(self.screen)
 
     def _draw_game_over_overlay(self):
         """Draws the semi-transparent overlay and game over message/buttons."""
@@ -1323,6 +1357,7 @@ class Game:
             self.analysis_runner.start(board, player, count, 'hard', budget=1.5, kind='analysis')
         except (OSError, ValueError):
             logger.exception('Cannot start research worker')
+            self.analysis_status = 'failed - R to retry'
             self._analysis_key = key  # Do not retry this failed position every frame.
             self.evaluation_in_progress = False
             self.needs_redraw = True
@@ -1330,6 +1365,7 @@ class Game:
         self._analysis_key = key
         self.evaluation_cache.clear()
         self.evaluation_in_progress = True
+        self.analysis_status = 'checking'
         self.needs_redraw = True
 
     def _queue_legality_overlay(self):
@@ -1342,12 +1378,16 @@ class Game:
         if self.current_player != BOARD_BLACK or self.board.win_length != 5:
             self._overlay_key = self._overlay_done_key = key
             self._overlay_invalid = []
+            self.overlay_status = 'no black fouls on this turn'
             return
+        self.overlay_status = 'checking'
         try:
             self.analysis_runner.start(self.board, self.current_player, count, 'hard',
                                        budget=1.5, kind='legality')
         except (OSError, ValueError):
             logger.exception('Cannot start legality overlay worker')
+            self.overlay_status = 'failed - R to retry'
+            self.needs_redraw = True
         self._overlay_key = key
 
     def _poll_analysis(self):
@@ -1358,7 +1398,14 @@ class Game:
         player = BOARD_BLACK if count % 2 == 0 else BOARD_WHITE
         result = self.analysis_runner.poll(board, player, count)
         if result is not None:
-            if result.get('legality_complete'):
+            if result.get('error'):
+                status = 'failed - R to retry'
+            elif result.get('partial') or result.get('timed_out') or not result.get('legality_complete'):
+                status = 'partial / unconfirmed - R to retry'
+            else:
+                status = 'complete'
+            self.analysis_status = self.overlay_status = status
+            if result.get('legality_complete') is True and not result.get('error') and not result.get('partial'):
                 self._overlay_done_key = position_key(board, player, count)
                 self._overlay_key = self._overlay_done_key
                 self._overlay_invalid = [tuple(p) for p in result.get('invalid_cells', [])
@@ -1386,6 +1433,10 @@ class Game:
 
     def draw(self):
         """Draws the entire game screen, adapting to board size."""
+        if self.rules_visible:
+            from rule_panel import draw_rules
+            draw_rules(self.screen,self.settings,self.small_font)
+            return
         if self.needs_redraw:
             self._draw_board()             # Uses self.start_x/y, self.cell_size
             self._draw_stones_and_markers()# Uses self.start_x/y, self.cell_size
