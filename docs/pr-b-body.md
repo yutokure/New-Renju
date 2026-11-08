@@ -31,4 +31,4 @@ This is deliberately **Draft**, not full release PASS:
 4. Sparse composed tactical corpus / limited independent opening diversity; no federation/external strong-engine exhaustive certification.
 5. Non-Windows OS memory cap explicitly unsupported; full tournament opening/clocks/claims/pass protocols out of scope.
 
-See `docs/validation-results.md`, `docs/final-acceptance.md`, design docs, four scoped implementation reviews and the final independent evidence review. The controlled native allocation-failure adapter cleanup check passed; frozen startup remains unapproved. All source-level review PASS labels are bounded and do not override these acceptance gaps.
+See `docs/validation-results.md`, `docs/final-acceptance.md`, design docs, four scoped implementation reviews and the final independent evidence review. The controlled native allocation-failure adapter cleanup check passed; default-path frozen startup remains unapproved. All source-level review PASS labels are bounded and do not override these acceptance gaps.
