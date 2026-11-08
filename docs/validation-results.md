@@ -90,7 +90,7 @@ PyInstaller6.13.0でonedirビルド成功。通常作業フォルダの明示的
 
 ## 7. 独立レビューと残件
 
-Hard、正式ルール、VH探索、資源APIを実装者以外がレビューし、具体的不具合を修正・回帰追加。Hard・ルール・探索レビューは限定source/mechanical PASS。資源レビューはsource/API部分のみPASSで、凍結動作/最終失敗回収証拠を含む全体はCHANGES REQUESTED。製品全体も上記残件でCHANGES REQUESTED。REJECTEDに該当する設計差替えは採用していない。
+Hard、正式ルール、VH探索、資源APIを実装者以外がレビューし、具体的不具合を修正・回帰追加。Hard・ルール・探索レビューは限定source/mechanical PASS。資源レビューはsource/APIと試験済みの制限強制・親終了・失敗回収・明示root凍結動作の限定証拠がPASSで、既定TEMP/通常配布GUIを含む全体はCHANGES REQUESTED。製品全体も上記残件でCHANGES REQUESTED。REJECTEDに該当する設計差替えは採用していない。
 
 複雑着手の非同期一点判定は追加実装し、限定独立レビューPASS。UI確認予算0秒を強制した実Windows試験で0.448秒後に合法中央手を適用、23フレーム・最大45.86ms、終局状態不変を確認した。専用ワーカーで未完了ならUNKNOWN/R再試行とし、勝敗や禁手を捏造しない。
 
