@@ -1,0 +1,9 @@
+{
+  "driver": "windows",
+  "dummy": false,
+  "frames": 8,
+  "max_frame_seconds": 0.018033000000286847,
+  "cancel_seconds": 0.0012493999997786887,
+  "returned_menu": true,
+  "worker_stopped": true
+}

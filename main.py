@@ -495,9 +495,15 @@ def main():
         pygame.display.flip()
         clock.tick(60)
 
+    if current_game:
+        current_game.close()
     pygame.quit()
     sys.exit()
 
 
 if __name__ == "__main__":
-    main() 
+    if len(sys.argv) == 3 and sys.argv[1] == '--ai-worker':
+        from ai_worker import run_request
+        run_request(sys.argv[2])
+    else:
+        main()

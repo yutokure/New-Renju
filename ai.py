@@ -1,228 +1,113 @@
-import random
+"""Easy/Normal policies and the conservative Phase A Hard search core.
+
+Hard remains iterative-deepening alpha-beta minimax with Zobrist hashing,
+bounded transpositions and line-pattern evaluation; no threat-space solver.
+"""
+from collections import OrderedDict
+from functools import lru_cache
+import logging
 import math
+import random
+import time
+
 import numpy as np
-import time # Import time module
 from board import Board, EMPTY, BLACK as BOARD_BLACK, WHITE as BOARD_WHITE
 
-# Define players for Zobrist hashing (map board state to index)
-ZOBRIST_PLAYERS = {BOARD_BLACK: 0, BOARD_WHITE: 1, EMPTY: 2}
-NUM_ZOBRIST_PLAYERS = 2 # Only hash for Black and White stones
+logger = logging.getLogger(__name__)
+ZOBRIST_PLAYERS = {BOARD_BLACK: 0, BOARD_WHITE: 1}
+NUM_ZOBRIST_PLAYERS = 2
+
 
 class AIBase:
     """Base class for different AI difficulties."""
     def __init__(self, player):
-        # The player this AI represents (BOARD_BLACK or BOARD_WHITE)
         self.player = player
         self.opponent = BOARD_WHITE if player == BOARD_BLACK else BOARD_BLACK
 
     def find_move(self, board: Board, move_count):
-        """Finds the next move for the AI.
-
-        Args:
-            board: The current board state.
-            move_count: The current move count.
-
-        Returns:
-            tuple: (row, col) of the chosen move, or None if no valid move.
-        """
         raise NotImplementedError("Subclasses must implement find_move")
 
 
 class AIEasy(AIBase):
-    """AI that plays completely randomly among valid empty cells."""
+    """Uniform random choice, preserving the original legal-cell order."""
     def find_move(self, board: Board, move_count):
-        """Finds a random *valid* move respecting opening and forbidden rules."""
-        print(f"DEBUG [AIEasy]: find_move called. Player: {self.player}, Move Count: {move_count}") # DEBUG
-        empty_cells = board.get_empty_cells()
-        if not empty_cells:
-            print("DEBUG [AIEasy]: No empty cells.") # DEBUG
-            return None
-
-        # Filter empty cells to get only valid moves
-        valid_moves = []
-        print(f"DEBUG [AIEasy]: Checking {len(empty_cells)} empty cells for validity...") # DEBUG
-        for r, c in empty_cells:
-            print(f"DEBUG [AIEasy]: Checking validity of ({r}, {c}) with move_count {move_count}...") # DEBUG
-            is_valid = board.is_valid_move(r, c, self.player, move_count)
-            print(f"DEBUG [AIEasy]: Result for ({r}, {c}): {is_valid}") # DEBUG
-            if is_valid:
-                valid_moves.append((r, c))
-
-        if valid_moves:
-            chosen_move = random.choice(valid_moves)
-            print(f"DEBUG [AIEasy]: Found {len(valid_moves)} valid moves. Choosing: {chosen_move}") # DEBUG
-            return chosen_move
-        else:
-            print("DEBUG [AIEasy]: No valid moves found.") # DEBUG
-            return None # No valid moves exist
+        moves = [move for move in board.get_empty_cells()
+                 if board.is_valid_move(*move, self.player, move_count)]
+        return random.choice(moves) if moves else None
 
 
 class AINormal(AIBase):
-    """AI that checks for immediate wins, blocks, threats, then random."""
-    def find_move(self, board: Board, move_count):
-        print(f"DEBUG [AINormal]: find_move called. Player: {self.player}, Move Count: {move_count}") # DEBUG
-        empty_cells = board.get_empty_cells()
-        if not empty_cells:
-            print("DEBUG [AINormal]: No empty cells.") # DEBUG
-            return None
-
-        opponent = self.opponent
-
-        # --- Helper function to check pattern formation ---
-        def check_pattern_created(r_check, c_check, p_check, pattern_tuple):
-            pattern_str, length, check_indices = pattern_tuple # Unpack the tuple
-            board.grid[r_check, c_check] = p_check # Temporarily place
-            created = False
-            temp_opponent = BOARD_WHITE if p_check == BOARD_BLACK else BOARD_BLACK # Opponent relative to p_check
-            for dr, dc in [(0, 1), (1, 0), (1, 1), (1, -1)]:
+    """Immediate win/block, original pattern priorities, then random legal."""
+    @staticmethod
+    def _creates_pattern(board, r, c, player, pattern):
+        text, length, indices = pattern
+        opponent = BOARD_WHITE if player == BOARD_BLACK else BOARD_BLACK
+        with board.temporary_move(r, c, player):
+            for dr, dc in ((0, 1), (1, 0), (1, 1), (1, -1)):
                 for offset in range(-length + 1, 1):
-                    segment_states = []
-                    positions = []
+                    if -offset not in indices:
+                        continue
+                    states = []
                     for i in range(length):
-                        cr, cc = r_check + (offset + i) * dr, c_check + (offset + i) * dc
-                        positions.append((cr, cc))
-                        if board.is_within_bounds(cr, cc):
-                            segment_states.append(str(board.grid[cr, cc]))
-                        else:
-                            # Treat border as opponent's stone for pattern matching
-                            segment_states.append(str(temp_opponent))
+                        nr, nc = r + (offset + i) * dr, c + (offset + i) * dc
+                        states.append(str(board.grid[nr, nc])
+                                      if board.is_within_bounds(nr, nc)
+                                      else str(opponent))
+                    if ''.join(states) == text:
+                        return True
+        return False
 
-                    current_pattern = "".join(segment_states)
-                    # print(f"DEBUG Pattern Check: Pos ({r_check},{c_check}) Player {p_check} Dir {(dr,dc)} Offset {offset} -> '{current_pattern}' vs '{pattern_str}'")
-                    if current_pattern == pattern_str:
-                        is_relevant = False
-                        # Check if the placed stone is part of the core pattern indices
-                        for idx in check_indices:
-                            if positions[idx] == (r_check, c_check):
-                                is_relevant = True
-                                break
-                        if is_relevant:
-                            created = True
-                            # print(f"DEBUG Pattern Found!: {pattern_str} at ({r_check},{c_check}) dir {(dr, dc)}")
-                            break
-                if created:
-                    break # Break outer loop as well if pattern found
-            board.grid[r_check, c_check] = EMPTY # Revert the temporary placement
-            return created
+    def find_move(self, board: Board, move_count):
+        empty = board.get_empty_cells()
+        legal = [move for move in empty
+                 if board.is_valid_move(*move, self.player, move_count)]
+        for move in legal:
+            with board.temporary_move(*move, self.player):
+                if board.check_win(self.player)[0]:
+                    return move
+        # Opponent legality is independent of our permission to occupy a cell.
+        for move in empty:
+            if board.is_valid_move(*move, self.opponent, move_count + 1):
+                with board.temporary_move(*move, self.opponent):
+                    wins = board.check_win(self.opponent)[0]
+                if wins and move in legal:
+                    return move
 
-        # --- Pattern Definitions ---
-        p_str = str(self.player)
-        o_str = str(opponent)
-        e_str = str(EMPTY)
+        p, o, e = str(self.player), str(self.opponent), str(EMPTY)
+        n = board.win_length
+        def pattern(left, stone, count, right):
+            return (left + stone * count + right, count + 2,
+                    tuple(range(1, count + 1)))
+        # For five these are exactly the original open/closed four/three
+        # patterns, in the same row-major selection order. Custom Gomoku
+        # shifts the same tiers to N-1 and N-2 stones.
+        open_four = pattern(e, p, n - 1, e)
+        closed_fours = (pattern(o, p, n - 1, e), pattern(e, p, n - 1, o))
+        open_three = pattern(e, p, n - 2, e)
+        opp_four = pattern(e, o, n - 1, e)
+        opp_three = pattern(e, o, n - 2, e)
+        priorities = ((self.player, (open_four,)),
+                      (self.opponent, (opp_four,)),
+                      (self.player, closed_fours),
+                      (self.player, (open_three,)),
+                      (self.opponent, (opp_three,)))
+        for player, patterns in priorities:
+            for move in empty:
+                count = move_count if player == self.player else move_count + 1
+                if not board.is_valid_move(*move, player, count):
+                    continue
+                if any(self._creates_pattern(board, *move, player, pat)
+                       for pat in patterns) and move in legal:
+                    return move
+        return random.choice(legal) if legal else None
 
-        # Patterns: (pattern_string, length, relevant_indices_for_creation)
-        open_four_pattern = (f"{e_str}{p_str}{p_str}{p_str}{p_str}{e_str}", 6, [1, 2, 3, 4])
-        closed_four_patterns = [
-            (f"{o_str}{p_str}{p_str}{p_str}{p_str}{e_str}", 6, [1, 2, 3, 4]),
-            (f"{e_str}{p_str}{p_str}{p_str}{p_str}{o_str}", 6, [1, 2, 3, 4]),
-        ]
-        open_three_pattern = (f"{e_str}{p_str}{p_str}{p_str}{e_str}", 5, [1, 2, 3])
-        opp_open_four_pattern = (f"{e_str}{o_str}{o_str}{o_str}{o_str}{e_str}", 6, [1, 2, 3, 4])
-        opp_open_three_pattern = (f"{e_str}{o_str}{o_str}{o_str}{e_str}", 5, [1, 2, 3])
 
-        # --- Move Selection Logic ---
-
-        # Priority 1: Win
-        for r, c in list(empty_cells):
-            if board.is_valid_move(r, c, self.player, move_count):
-                board.grid[r, c] = self.player
-                original_last_move = board.last_move
-                board.last_move = (r, c)
-                won, _ = board.check_win(self.player)
-                board.grid[r, c] = EMPTY
-                board.last_move = original_last_move
-                if won:
-                    print(f"AINormal: Found winning move at ({r}, {c})")
-                    return (r, c)
-
-        # Priority 2: Block Opponent Win
-        block_move = None
-        for r, c in list(empty_cells):
-            if board.is_valid_move(r, c, self.player, move_count):
-                board.grid[r, c] = opponent
-                original_last_move = board.last_move
-                board.last_move = (r, c)
-                opponent_wins, _ = board.check_win(opponent)
-                board.grid[r, c] = EMPTY
-                board.last_move = original_last_move
-                if opponent_wins:
-                    print(f"AINormal: Found blocking move at ({r}, {c})")
-                    block_move = (r, c)
-                    return block_move
-
-        # Priority 3: Create Open Four
-        for r, c in list(empty_cells):
-            if board.is_valid_move(r, c, self.player, move_count):
-                # Pass the single open_four_pattern tuple
-                if check_pattern_created(r, c, self.player, open_four_pattern):
-                    print(f"AINormal: Found move to create Open Four at ({r}, {c})")
-                    return (r, c)
-
-        # Priority 4: Block Opponent's Open Four
-        opponent_threat_moves = []
-        for r, c in list(empty_cells):
-            if board.is_empty(r, c):
-                # Pass the single opp_open_four_pattern tuple
-                if check_pattern_created(r, c, opponent, opp_open_four_pattern):
-                    opponent_threat_moves.append((r, c))
-
-        if opponent_threat_moves:
-            for block_r, block_c in opponent_threat_moves:
-                # Check if *we* can legally block this threat
-                if board.is_valid_move(block_r, block_c, self.player, move_count):
-                    print(f"AINormal: Found move to block opponent Open Four at ({block_r}, {block_c})")
-                    return (block_r, block_c)
-
-        # Priority 5: Create Closed Four
-        for r, c in list(empty_cells):
-            if board.is_valid_move(r, c, self.player, move_count):
-                 # Iterate through the list of closed_four_patterns
-                 for pattern_tuple in closed_four_patterns:
-                     if check_pattern_created(r, c, self.player, pattern_tuple):
-                        print(f"AINormal: Found move to create Closed Four at ({r}, {c})")
-                        return (r, c) # Return immediately if any closed four is created
-
-        # Priority 6: Create Open Three
-        for r, c in list(empty_cells):
-            if board.is_valid_move(r, c, self.player, move_count):
-                # Pass the single open_three_pattern tuple
-                if check_pattern_created(r, c, self.player, open_three_pattern):
-                     print(f"AINormal: Found move to create Open Three at ({r}, {c})")
-                     return (r, c)
-
-        # Priority 7: Block Opponent's Open Three
-        opponent_threat_moves_3 = []
-        for r, c in list(empty_cells):
-             if board.is_empty(r, c):
-                 # Pass the single opp_open_three_pattern tuple
-                 if check_pattern_created(r, c, opponent, opp_open_three_pattern):
-                     opponent_threat_moves_3.append((r, c))
-
-        if opponent_threat_moves_3:
-             for block_r, block_c in opponent_threat_moves_3:
-                 if board.is_valid_move(block_r, block_c, self.player, move_count):
-                     print(f"AINormal: Found move to block opponent Open Three at ({block_r}, {block_c})")
-                     return (block_r, block_c)
-
-        # Priority 8: Random Valid Move
-        valid_moves = []
-        for r_val, c_val in empty_cells:
-            if board.is_valid_move(r_val, c_val, self.player, move_count):
-                valid_moves.append((r_val, c_val))
-
-        if valid_moves:
-            chosen_move = random.choice(valid_moves)
-            # print(f"AINormal: Found {len(valid_moves)} valid random moves. Choosing: {chosen_move}")
-            return chosen_move
-        else:
-            # print("AINormal: No valid moves found at all.")
-            return None
+class _SearchInterrupted(Exception):
+    """Internal cooperative deadline/cancellation unwind, never a score."""
 
 
 class AIHard(AIBase):
-    """AI that uses Minimax with Alpha-Beta pruning and Iterative Deepening."""
-    # Define detailed pattern scores inspired by reference implementation
-    # Higher absolute values indicate higher priority. Defensive scores are higher.
+    """Iterative-deepening minimax, alpha-beta, Zobrist TT and patterns."""
     PATTERN_SCORES = {
         # AI Player (self.player = p)
         "p_win": 10000000,  # Five in a row
@@ -247,600 +132,414 @@ class AIHard(AIBase):
         "o_broken_two": -50,
     }
 
-    def __init__(self, player, depth=3, time_limit_sec=0.8): # Default depth 3, time limit 0.8s
-        super().__init__(player)
-        self.max_depth = depth # Store max depth allowed
-        self.time_limit = time_limit_sec
-        # Initialize Transposition Table and Zobrist Hashing
-        self.transposition_table = {}
-        self.zobrist_table = self._init_zobrist()
-        # current_hash will be calculated at the start of find_move based on the actual board
-        self.current_hash = 0
-        # print(f"AIHard initialized for player {'Black' if player == BOARD_BLACK else 'White'} with Max Depth {self.max_depth}, Time Limit {self.time_limit}s")
 
-    def _init_zobrist(self):
-        """Initializes the Zobrist table with random 64-bit integers."""
-        # Standard board size assumption (15x15) or get from board?
-        # Assuming a max possible size for flexibility, e.g., 19x19
-        # Need to know the actual board size used in the game.
-        # Let's assume it's fixed or passed somehow. Using a common 15x15 for now.
-        # TODO: Get board size dynamically if possible
-        max_size = 19 # Assume max board size
-        table = np.random.randint(1, 2**63 - 1, size=(max_size, max_size, NUM_ZOBRIST_PLAYERS), dtype=np.uint64)
-        return table
+    def __init__(self, player, depth=2, time_limit_sec=1.5, *, seed=0,
+                 tt_capacity=50000):
+        super().__init__(player)
+        self.max_depth = max(0, int(depth))
+        self.time_limit = max(0.0, float(time_limit_sec))
+        self.seed = int(seed)
+        self.tt_capacity = max(0, int(tt_capacity))
+        self.transposition_table = OrderedDict()
+        self.zobrist_table = self._init_zobrist()
+        self.current_hash = 0
+        self.cancel_event = None
+        self.progress_callback = None
+        self.completed_depth = 0
+        self.nodes = 0
+        self.evaluations = 0
+        self._deadline = None
+        self._active_cancel_event = None
+        self._search_started = None
+
+    def _init_zobrist(self, size=19):
+        # Local seeded generator: does not consume either global RNG stream.
+        # Rebuilding for larger boards preserves determinism for that size.
+        rng = np.random.default_rng(self.seed % (1 << 64))
+        return rng.integers(1, 2**63 - 1, size=(size, size, 2), dtype=np.uint64)
+
+    def _ensure_zobrist(self, size):
+        if size > self.zobrist_table.shape[0]:
+            self.zobrist_table = self._init_zobrist(size)
+            self.transposition_table.clear()
 
     def _calculate_board_hash(self, board: Board):
-        """Calculates the Zobrist hash for the entire current board state."""
-        h = np.uint64(0)
-        for r in range(board.size):
-            for c in range(board.size):
-                player_state = board.grid[r, c]
-                if player_state != EMPTY:
-                    player_index = ZOBRIST_PLAYERS[player_state]
-                    h ^= self.zobrist_table[r, c, player_index]
+        self._ensure_zobrist(board.size)
+        h = 0
+        for r, c in zip(*np.where(board.grid != EMPTY)):
+            h ^= int(self.zobrist_table[r, c, ZOBRIST_PLAYERS[board.grid[r, c]]])
         return h
 
-    def find_move(self, board: Board, move_count):
-        """Finds the best move using Iterative Deepening Minimax within a time limit,\n           with pre-checks for immediate wins/blocks.\n        """
-        start_time = time.time()
-        self.transposition_table = {} # Clear TT at the start of each find_move call
-        self.current_hash = self._calculate_board_hash(board)
+    def _check_interrupt(self):
+        if (self._active_cancel_event is not None
+                and self._active_cancel_event.is_set()):
+            raise _SearchInterrupted()
+        if self._deadline is not None and time.perf_counter() >= self._deadline:
+            raise _SearchInterrupted()
 
-        empty_cells = board.get_empty_cells()
-        valid_empty_cells = [(r, c) for r, c in empty_cells if board.is_valid_move(r, c, self.player, move_count)]
+    def _publish(self, callback, move, score=None, phase='search'):
+        if callback is None:
+            return
+        progress = {'move': move, 'completed_depth': self.completed_depth,
+                    'depth': self.completed_depth, 'score': score,
+                    'nodes': self.nodes, 'evaluations': self.evaluations,
+                    'elapsed': time.perf_counter() - self._search_started,
+                    'phase': phase}
+        # Observers must not be able to corrupt the move search or board state.
+        try:
+            callback(progress)
+        except Exception:
+            logger.exception('Hard progress callback failed')
 
-        if not valid_empty_cells:
-            return None
+    def find_move(self, board: Board, move_count, cancel_event=None,
+                  progress_callback=None):
+        """Return a legal fallback or the last *completed* depth's choice.
 
-        # --- Pre-Minimax Checks (similar to AI Normal) --- #
-        # 1. Check for immediate win for self
-        print(f"AIHard Pre-Check [Player {self.player}]: Checking {len(valid_empty_cells)} valid moves for immediate win...")
-        original_last_move = board.last_move # Store original last_move
-        for r, c in valid_empty_cells:
-            # print(f"AIHard Pre-Check: Testing potential win at ({r},{c})...") # Reduce noise
-            board.grid[r, c] = self.player
-            board.last_move = (r, c) # <<< Temporarily set last_move for check_win
-            won, win_info = board.check_win(self.player)
-            board.grid[r, c] = EMPTY
-            board.last_move = original_last_move # <<< Restore original last_move
-            if won:
-                print(f"AIHard Pre-Check: !!! WIN FOUND at ({r}, {c}) with line {win_info}! Returning immediately. !!!")
-                return (r, c)
-            # else: # Optional: log if not a win
-            #     # print(f"AIHard Pre-Check: ({r},{c}) is not an immediate win.") # Reduce noise
-
-        # 2. Check for immediate block of opponent's win
-        block_win_move = None
-        # original_last_move is already stored from check 1
-        for r, c in valid_empty_cells:
-            board.grid[r, c] = self.opponent
-            board.last_move = (r, c) # <<< Temporarily set last_move for check_win
-            opponent_wins, _ = board.check_win(self.opponent)
-            board.grid[r, c] = EMPTY
-            board.last_move = original_last_move # <<< Restore original last_move
-            if opponent_wins:
-                # Check if the blocking move itself is valid for the player
-                if board.is_valid_move(r, c, self.player, move_count):
-                    print(f"AIHard Pre-Check: Found blocking move for opponent win at ({r}, {c})")
-                    block_win_move = (r, c)
-                    break # Found the necessary block
-        if block_win_move:
-            return block_win_move
-
-        # 3. Check for immediate block of opponent's open four (optional but good)
-        # --- REMOVE THIS CHECK FOR PERFORMANCE/SIMPLICITY --- #
-        # block_open_four_move = None
-        # for r, c in valid_empty_cells:
-        #      opponent_pattern_code = self._check_critical_pattern_at_move(board, r, c, self.opponent)
-        #      if opponent_pattern_code == "P_OPEN_FOUR": # Opponent makes open four if they play here
-        #          if board.is_valid_move(r, c, self.player, move_count):
-        #              print(f"AIHard Pre-Check: Found blocking move for opponent open four at ({r}, {c})")
-        #              block_open_four_move = (r,c)
-        #              break
-        # if block_open_four_move:
-        #     return block_open_four_move
-
-        # --- If no immediate critical move, proceed with Minimax --- #
-        print("AIHard: No immediate win/block moves found. Starting Minimax search...")
-        best_move_so_far = None
-
-        # Select the first valid move as a fallback if time runs out immediately
-        if valid_empty_cells:
-            best_move_so_far = valid_empty_cells[0]
-        else:
-             return None # Should not happen if initial check passed
-
-        # --- Iterative Deepening Loop (using self.max_depth, likely 2) --- #
-        for current_depth in range(1, self.max_depth + 1):
-            print(f"AIHard: Starting search at depth {current_depth}...")
-            alpha = -math.inf
-            beta = math.inf
-            current_best_score = -math.inf
-            current_best_move_this_depth = None
-
-            # Use ordered adjacent moves for the root level search
-            # Generate candidates based on the simplified heuristic
-            ordered_initial_moves = self._get_ordered_adjacent_moves(board, self.player, move_count)
-            if not ordered_initial_moves:
-                 # Fallback if adjacent move generation fails unexpectedly
-                 if best_move_so_far: return best_move_so_far
-                 elif valid_empty_cells: return valid_empty_cells[0]
-                 else: return None
-
-            for r, c in ordered_initial_moves:
-                # --- Time Check --- #
-                elapsed_time = time.time() - start_time
-                if elapsed_time > self.time_limit:
-                    print(f"AIHard: Time limit exceeded during depth {current_depth} search. Returning best move from depth {current_depth - 1}.")
-                    return best_move_so_far
-
-                # --- Simulate Move and Call Minimax --- #
-                board.grid[r, c] = self.player
-                original_last_move = board.last_move
-                board.last_move = (r,c)
-                move_hash_change = self.zobrist_table[r, c, ZOBRIST_PLAYERS[self.player]]
-                self.current_hash ^= move_hash_change
-
-                score = self._minimax(board, current_depth - 1, alpha, beta, False, move_count + 1, self.current_hash)
-
-                self.current_hash ^= move_hash_change
-                board.grid[r, c] = EMPTY
-                board.last_move = original_last_move
-
-                if score > current_best_score:
-                    current_best_score = score
-                    current_best_move_this_depth = (r, c)
-
-                alpha = max(alpha, current_best_score)
-                # No beta pruning at root typically
-
-            if current_best_move_this_depth is not None:
-                best_move_so_far = current_best_move_this_depth
-                print(f"AIHard: Depth {current_depth} complete. Best move found: {best_move_so_far} (Score: {current_best_score})")
-            else:
-                 print(f"AIHard: No best move found at depth {current_depth}. Keeping previous: {best_move_so_far}")
-
-            elapsed_time_after_depth = time.time() - start_time
-            if elapsed_time_after_depth > self.time_limit:
-                 print(f"AIHard: Time limit exceeded after completing depth {current_depth}. Returning best move found.")
-                 break
-
-        final_elapsed = time.time() - start_time
-        print(f"AIHard: Search complete. Chose move: {best_move_so_far} (Time: {final_elapsed:.3f}s)")
-        return best_move_so_far
-
-    # --- Helper to get ordered adjacent moves (used in minimax root) --- #
-    def _get_ordered_adjacent_moves(self, board: Board, player: int, move_count: int):
-        """Generates adjacent valid moves and orders them by the lightweight heuristic."""
-        possible_moves_set = set()
-        occupied_cells = list(zip(*np.where(board.grid != EMPTY)))
-        search_radius = 1
-        if not occupied_cells:
+        A callback receives one dict for the verified fallback, tactical result,
+        and every completed iteration. Cancellation returns the same safe best
+        move, never a partial depth. Search exceptions propagate after all
+        hypothetical board changes have been restored.
+        """
+        self._search_started = time.perf_counter()
+        self._deadline = self._search_started + self.time_limit
+        self._active_cancel_event = (cancel_event if cancel_event is not None
+                                     else self.cancel_event)
+        callback = progress_callback if progress_callback is not None else self.progress_callback
+        self.completed_depth = self.nodes = self.evaluations = 0
+        self.transposition_table.clear()  # root-scoped, bounded even within a turn
+        best_move = None
+        try:
+            # Find one verified legal move before any deadline/cancel unwind.
+            # With no legal move this necessarily scans the finite board.
             center = board.size // 2
-            if board.is_valid_move(center, center, player, move_count):
-                possible_moves_set.add((center, center))
-        else:
-            for r_occ, c_occ in occupied_cells:
-                for dr in range(-search_radius, search_radius + 1):
-                    for dc in range(-search_radius, search_radius + 1):
-                        if dr == 0 and dc == 0: continue
-                        nr, nc = r_occ + dr, c_occ + dc
-                        if board.is_within_bounds(nr, nc) and board.grid[nr, nc] == EMPTY:
-                            if board.is_valid_move(nr, nc, player, move_count):
-                                possible_moves_set.add((nr, nc))
+            anchor_r, anchor_c = board.last_move if board.last_move is not None else (center, center)
+            fallback_cells = sorted(board.get_empty_cells(), key=lambda move: (
+                max(abs(move[0] - anchor_r), abs(move[1] - anchor_c)),
+                abs(move[0] - center) + abs(move[1] - center), move[0], move[1]))
+            for r, c in fallback_cells:
+                if board.is_valid_move(r, c, self.player, move_count):
+                    best_move = (int(r), int(c))
+                    break
+            if best_move is None:
+                return None
+            self._publish(callback, best_move, phase='fallback')
+            self._check_interrupt()
+            self.current_hash = self._calculate_board_hash(board)
+            self._check_interrupt()
 
-        candidate_moves = list(possible_moves_set)
-        if not candidate_moves: return []
+            empty = board.get_empty_cells()
+            legal = []
+            for move in empty:
+                self._check_interrupt()
+                if board.is_valid_move(*move, self.player, move_count):
+                    legal.append(move)
+                    with board.temporary_move(*move, self.player):
+                        wins = board.check_win(self.player)[0]
+                    self._check_interrupt()
+                    if wins:
+                        self._publish(callback, move, self.PATTERN_SCORES['p_win'], 'tactical')
+                        return move
+            legal_set = set(legal)
+            for move in empty:
+                self._check_interrupt()
+                if not board.is_valid_move(*move, self.opponent, move_count + 1):
+                    continue
+                with board.temporary_move(*move, self.opponent):
+                    wins = board.check_win(self.opponent)[0]
+                self._check_interrupt()
+                if wins and move in legal_set:
+                    self._publish(callback, move, phase='tactical')
+                    return move
 
-        move_scores = []
-        for r, c in candidate_moves:
-            score = self._heuristic_score_move_sim(board, r, c, player, move_count)
-            move_scores.append(((r, c), score))
-        move_scores.sort(key=lambda item: item[1], reverse=True)
-        return [move for move, score in move_scores]
+            for depth in range(1, self.max_depth + 1):
+                self._check_interrupt()
+                moves = self._get_ordered_adjacent_moves(board, self.player, move_count)
+                if not moves:
+                    break
+                alpha, score, depth_move = -math.inf, -math.inf, None
+                for r, c in moves:
+                    self._check_interrupt()
+                    next_hash = self.current_hash ^ int(self.zobrist_table[r, c, ZOBRIST_PLAYERS[self.player]])
+                    with board.temporary_move(r, c, self.player):
+                        value = self._minimax(board, depth - 1, alpha, math.inf,
+                                              False, move_count + 1, next_hash)
+                    self._check_interrupt()
+                    if value > score:
+                        score, depth_move = value, (r, c)
+                    alpha = max(alpha, score)
+                # Only this point promotes a result: all root moves finished.
+                self._check_interrupt()
+                if depth_move is not None:
+                    best_move = depth_move
+                    self.completed_depth = depth
+                    self._publish(callback, best_move, score)
+            return best_move
+        except _SearchInterrupted:
+            return best_move
+        finally:
+            self._deadline = None
+            self._active_cancel_event = None
+
+    def _get_ordered_adjacent_moves(self, board: Board, player: int, move_count: int):
+        """Radius-one neighborhood, deduplicated *before* expensive legality."""
+        possible = set()
+        occupied = list(zip(*np.where(board.grid != EMPTY)))
+        if not occupied:
+            possible.add((board.size // 2, board.size // 2))
+        for r, c in occupied:
+            self._check_interrupt()
+            for dr in range(-1, 2):
+                for dc in range(-1, 2):
+                    nr, nc = int(r + dr), int(c + dc)
+                    if board.is_within_bounds(nr, nc) and board.grid[nr, nc] == EMPTY:
+                        possible.add((nr, nc))
+        candidates = []
+        for move in sorted(possible):
+            self._check_interrupt()
+            if board.is_valid_move(*move, player, move_count):
+                candidates.append(move)
+        # Stable coordinate tie breaks, independent of sets/global random state.
+        candidates.sort(key=lambda move: (-self._heuristic_score_move_sim(
+            board, *move, player, move_count), move))
+        return candidates
 
     def _heuristic_score_move_sim(self, board: Board, r: int, c: int, player: int, move_count: int):
-        """
-        Extremely simplified heuristic focusing only on proximity for performance.
-        Win/loss checks are removed as they were too slow.
-        'player' is the player whose turn it is in the simulation.
-        """
-        # Only calculate proximity bonus
-        proximity_bonus = 0
-        for dr in range(-1, 2):
-            for dc in range(-1, 2):
-                if dr == 0 and dc == 0: continue
-                nr, nc = r + dr, c + dc
-                if board.is_within_bounds(nr, nc) and board.grid[nr, nc] != EMPTY:
-                    proximity_bonus += 1
-        return proximity_bonus
+        return sum(board.is_within_bounds(r + dr, c + dc)
+                   and board.grid[r + dr, c + dc] != EMPTY
+                   for dr in range(-1, 2) for dc in range(-1, 2)
+                   if dr or dc)
 
-    def _minimax(self, board: Board, depth: int, alpha: float, beta: float, maximizing_player: bool, move_count: int, current_board_hash: np.uint64):
-        """Minimax algorithm with Alpha-Beta pruning and Transposition Table.
-           Includes candidate move generation (neighbor search) to limit branching factor.
-        """
-        original_alpha = alpha
-        original_beta = beta
+    def _tt_key(self, board, maximizing_player, move_count, board_hash):
+        # last_move is terminal-check metadata, move_count controls opening.
+        # Root player/settings prevent interpretation of a score in another game.
+        return (int(board_hash), self.player, bool(maximizing_player),
+                board.size, board.win_length, int(move_count),
+                tuple(board.last_move) if board.last_move is not None else None,
+                tuple(sorted(self.PATTERN_SCORES.items())))
 
-        # --- Transposition Table Lookup --- #
-        tt_entry = self.transposition_table.get(current_board_hash)
-        if tt_entry is not None:
-            tt_score, tt_depth, tt_flag = tt_entry
-            if tt_depth >= depth:
-                if tt_flag == 'exact':
-                    # print(f"TT Hit (Exact): d={depth}, h={current_board_hash}, score={tt_score}")
-                    return tt_score
-                elif tt_flag == 'lowerbound' and tt_score > alpha:
-                    alpha = tt_score # Use stored lower bound to narrow alpha
-                    # print(f"TT Hit (Lower): d={depth}, h={current_board_hash}, alpha updated to {alpha}")
-                elif tt_flag == 'upperbound' and tt_score < beta:
-                    beta = tt_score # Use stored upper bound to narrow beta
-                    # print(f"TT Hit (Upper): d={depth}, h={current_board_hash}, beta updated to {beta}")
-                if alpha >= beta:
-                    # print(f"TT Cutoff: d={depth}, h={current_board_hash}, score={tt_score}")
-                    return tt_score # Pruning based on TT info
+    def _store_tt(self, key, score, depth, flag):
+        if not self.tt_capacity:
+            return
+        old = self.transposition_table.get(key)
+        if old is not None and old[1] > depth:
+            return
+        self.transposition_table[key] = (score, depth, flag)
+        self.transposition_table.move_to_end(key)
+        while len(self.transposition_table) > self.tt_capacity:
+            self.transposition_table.popitem(last=False)
 
-        # --- Terminal State Check & Immediate Win/Loss Check --- #
-        current_player_sim = self.player if maximizing_player else self.opponent
-        opponent_sim = self.opponent if maximizing_player else self.player
-
-        # Check if current player can win immediately (before checking depth)
-        # Note: This check might be better placed within the candidate generation loop?
-        # Let's check terminal state based on *previous* move first
-        won_player = board.check_win(current_player_sim)[0]
-        won_opponent = board.check_win(opponent_sim)[0]
-        if won_player: return self.PATTERN_SCORES["p_win"] + depth
-        if won_opponent: return self.PATTERN_SCORES["o_win"] - depth
-
+    def _minimax(self, board: Board, depth: int, alpha: float, beta: float,
+                 maximizing_player: bool, move_count: int, current_board_hash):
+        self._check_interrupt()
+        self.nodes += 1
+        # Root perspective, never the side-to-move perspective. Do not allow a
+        # TT hit to bypass terminal metadata checks.
+        if board.check_win(self.player)[0]:
+            return self.PATTERN_SCORES['p_win'] + depth
+        if board.check_win(self.opponent)[0]:
+            return self.PATTERN_SCORES['o_win'] - depth
+        self._check_interrupt()
+        if not np.any(board.grid == EMPTY):
+            return 0
         if depth <= 0:
-             # Check for draw before evaluating
-             if not board.get_empty_cells(): return 0
-             return self._evaluate_board(board) # Simplified eval (win/loss only)
-
-        # Check for draw
-        empty_cells_check = board.get_empty_cells()
-        if not empty_cells_check: return 0
-
-        # --- Candidate Move Generation (Adjacent Cells Only) & Lightweight Ordering --- #
-        possible_moves_set = set()
-        occupied_cells = list(zip(*np.where(board.grid != EMPTY)))
-        search_radius = 1
-
-        if not occupied_cells:
-            center = board.size // 2
-            if board.is_valid_move(center, center, current_player_sim, move_count):
-                possible_moves_set.add((center, center))
-        else:
-            for r_occ, c_occ in occupied_cells:
-                for dr in range(-search_radius, search_radius + 1):
-                    for dc in range(-search_radius, search_radius + 1):
-                        if dr == 0 and dc == 0: continue
-                        nr, nc = r_occ + dr, c_occ + dc
-                        if board.is_within_bounds(nr, nc) and board.grid[nr, nc] == EMPTY:
-                            if board.is_valid_move(nr, nc, current_player_sim, move_count):
-                                possible_moves_set.add((nr, nc))
-
-        candidate_moves = list(possible_moves_set)
-
-        if not candidate_moves:
             return self._evaluate_board(board)
 
-        # Check for immediate winning or blocking moves within candidates
-        immediate_win_move = None
-        immediate_block_move = None
-        for r, c in candidate_moves:
-            # Check player win
-            board.grid[r, c] = current_player_sim
-            if board.check_win(current_player_sim)[0]:
-                immediate_win_move = (r, c)
-            board.grid[r, c] = EMPTY # Revert
-            if immediate_win_move: break # Found a win, no need to check others
+        original_alpha, original_beta = alpha, beta
+        key = self._tt_key(board, maximizing_player, move_count, current_board_hash)
+        entry = self.transposition_table.get(key)
+        # Exact requested remaining depth: terminal distance and heuristic
+        # horizon differ by depth, so deeper results are not reused as exact.
+        if entry is not None and entry[1] == depth:
+            score, _, flag = entry
+            if flag == 'exact':
+                return score
+            if flag == 'lowerbound':
+                alpha = max(alpha, score)
+            elif flag == 'upperbound':
+                beta = min(beta, score)
+            if alpha >= beta:
+                return score
 
-        if not immediate_win_move:
-             for r, c in candidate_moves:
-                 # Check opponent win (block needed)
-                 board.grid[r, c] = opponent_sim
-                 if board.check_win(opponent_sim)[0]:
-                     immediate_block_move = (r, c)
-                 board.grid[r, c] = EMPTY # Revert
-                 if immediate_block_move: break # Found a block, no need to check others
+        player = self.player if maximizing_player else self.opponent
+        opponent = self.opponent if maximizing_player else self.player
+        moves = self._get_ordered_adjacent_moves(board, player, move_count)
+        if not moves:
+            return self._evaluate_board(board)
 
-        # Prioritize immediate win/block if found
-        if immediate_win_move:
-            ordered_possible_moves = [immediate_win_move]
-        elif immediate_block_move:
-            ordered_possible_moves = [immediate_block_move]
-        else:
-            # Order the adjacent candidates using the extremely lightweight heuristic (proximity)
-            move_scores = []
-            for r, c in candidate_moves:
-                score = self._heuristic_score_move_sim(board, r, c, current_player_sim, move_count)
-                move_scores.append(((r, c), score))
-            move_scores.sort(key=lambda item: item[1], reverse=True)
-            ordered_possible_moves = [move for move, score in move_scores]
+        # Preserve existing immediate win/block narrowing, now with correct
+        # last_move and independent opponent legality. All probes unwind safely.
+        winning = blocking = None
+        for move in moves:
+            self._check_interrupt()
+            with board.temporary_move(*move, player):
+                wins = board.check_win(player)[0]
+            if wins:
+                winning = move
+                break
+        if winning is None:
+            for move in moves:
+                self._check_interrupt()
+                if not board.is_valid_move(*move, opponent, move_count + 1):
+                    continue
+                with board.temporary_move(*move, opponent):
+                    wins = board.check_win(opponent)[0]
+                if wins:
+                    blocking = move
+                    break
+        if winning is not None or blocking is not None:
+            moves = [winning if winning is not None else blocking]
 
-        # Store original last move before simulation loop
-        original_last_move = board.last_move
-
-        # --- Minimax Recursion --- #
-        if maximizing_player:
-            max_eval = -math.inf
-            for r, c in ordered_possible_moves: # Iterate through ordered adjacent moves
-                board.grid[r, c] = current_player_sim
-                board.last_move = (r,c)
-                # Calculate hash change for the move
-                move_hash_change = self.zobrist_table[r, c, ZOBRIST_PLAYERS[current_player_sim]]
-                next_hash = current_board_hash ^ move_hash_change
-
-                eval_score = self._minimax(board, depth - 1, alpha, beta, False, move_count + 1, next_hash) # Increment move_count here
-                board.grid[r, c] = EMPTY
-                board.last_move = original_last_move
-                max_eval = max(max_eval, eval_score)
-                alpha = max(alpha, eval_score)
-                if beta <= alpha:
-                    break # Beta cut-off
-            # --- Transposition Table Store --- #
-            tt_flag = 'exact'
-            if max_eval <= original_alpha: # Failed low (didn't raise alpha)
-                tt_flag = 'upperbound'
-            elif max_eval >= beta: # Failed high (caused beta cutoff)
-                tt_flag = 'lowerbound'
-            self.transposition_table[current_board_hash] = (max_eval, depth, tt_flag)
-            # print(f"TT Store: d={depth}, h={current_board_hash}, score={max_eval}, flag={tt_flag}")
-            return max_eval
-        else: # Minimizing player
-            min_eval = math.inf
-            for r, c in ordered_possible_moves: # Iterate through ordered adjacent moves
-                board.grid[r, c] = current_player_sim
-                board.last_move = (r,c)
-                # Calculate hash change for the move
-                move_hash_change = self.zobrist_table[r, c, ZOBRIST_PLAYERS[current_player_sim]]
-                next_hash = current_board_hash ^ move_hash_change
-
-                eval_score = self._minimax(board, depth - 1, alpha, beta, True, move_count + 1, next_hash) # Increment move_count here
-                board.grid[r, c] = EMPTY
-                board.last_move = original_last_move
-                min_eval = min(min_eval, eval_score)
-                beta = min(beta, eval_score)
-                if beta <= alpha:
-                    break # Alpha cut-off
-            # --- Transposition Table Store --- #
-            tt_flag = 'exact'
-            if min_eval <= alpha: # Failed low (caused alpha cutoff)
-                tt_flag = 'upperbound'
-            elif min_eval >= original_beta: # Failed high (didn't lower beta)
-                tt_flag = 'lowerbound'
-            self.transposition_table[current_board_hash] = (min_eval, depth, tt_flag)
-            # print(f"TT Store: d={depth}, h={current_board_hash}, score={min_eval}, flag={tt_flag}")
-            return min_eval
+        score = -math.inf if maximizing_player else math.inf
+        for r, c in moves:
+            self._check_interrupt()
+            next_hash = int(current_board_hash) ^ int(self.zobrist_table[r, c, ZOBRIST_PLAYERS[player]])
+            with board.temporary_move(r, c, player):
+                value = self._minimax(board, depth - 1, alpha, beta,
+                                      not maximizing_player, move_count + 1,
+                                      next_hash)
+            self._check_interrupt()
+            if maximizing_player:
+                score = max(score, value)
+                alpha = max(alpha, score)
+            else:
+                score = min(score, value)
+                beta = min(beta, score)
+            if alpha >= beta:
+                break
+        # A deadline/cancel never stores an unfinished subtree as a TT score.
+        self._check_interrupt()
+        flag = ('upperbound' if score <= original_alpha else
+                'lowerbound' if score >= original_beta else 'exact')
+        self._store_tt(key, score, depth, flag)
+        return score
 
     def _evaluate_board(self, board: Board):
-        """Evaluates the board state based on patterns found in all lines.
-           Higher score is better for the AI player (self.player).
-           Adds extra penalties for critical opponent threats.
-        """
-        total_score = 0
-        opponent_open_three_penalty = self.PATTERN_SCORES["o_open_three"] * 2 # Extra penalty multiplier
-        opponent_open_four_penalty = self.PATTERN_SCORES["o_open_four"] * 2 # Extra penalty multiplier
-        # Add similar large bonus for player's open four/three? Maybe later.
-
-        # Check all lines: horizontal, vertical, diagonals
-        lines = self._get_all_lines(board)
-
-        critical_threat_found = False # Flag to check if immediate loss was already evaluated
-
-        for line in lines:
-            # Use the updated evaluate_line method (returning max absolute score)
-            line_eval_score = self._evaluate_line(line)
-
-            # Check for immediate win/loss first
-            if line_eval_score >= self.PATTERN_SCORES["p_win"] : return self.PATTERN_SCORES["p_win"]
-            if line_eval_score <= self.PATTERN_SCORES["o_win"] : return self.PATTERN_SCORES["o_win"]
-
-            # Add the line score (likely the most significant pattern's score)
-            total_score += line_eval_score
-
-            # Apply extra penalty if critical opponent threats are the dominant pattern in the line
-            if line_eval_score == self.PATTERN_SCORES["o_open_four"]:
-                 total_score += opponent_open_four_penalty # Add extra penalty
-                 critical_threat_found = True
-                 # print(f"DEBUG Eval Board: Extra penalty applied for Opponent Open Four. New total: {total_score}")
-            elif line_eval_score == self.PATTERN_SCORES["o_open_three"]:
-                 total_score += opponent_open_three_penalty # Add extra penalty
-                 critical_threat_found = True
-                 # print(f"DEBUG Eval Board: Extra penalty applied for Opponent Open Three. New total: {total_score}")
-
-        # If no critical threats were found via max_abs_score in _evaluate_line,
-        # maybe do a simpler check for their existence? (Less accurate due to overlap)
-        # For now, rely on _evaluate_line returning the critical score if it's dominant.
-
-        # Add a small bonus/penalty for center control (optional)
-        # center = board.size // 2
-        # if board.grid[center, center] == self.player: total_score += 5
-        # elif board.grid[center, center] == self.opponent: total_score -= 5
-
-        return total_score
+        """Original most-significant-line pattern sum and defensive weights."""
+        self.evaluations += 1
+        total = 0
+        for line in self._get_all_lines(board):
+            self._check_interrupt()
+            score = self._evaluate_line(line, board.win_length, board.size)
+            if score >= self.PATTERN_SCORES['p_win']:
+                return self.PATTERN_SCORES['p_win']
+            if score <= self.PATTERN_SCORES['o_win']:
+                return self.PATTERN_SCORES['o_win']
+            total += score
+            if score in (self.PATTERN_SCORES['o_open_four'],
+                         self.PATTERN_SCORES['o_open_three']):
+                total += score * 2
+        # A heuristic estimate must never outrank an actual win or loss.
+        return max(self.PATTERN_SCORES['o_win'] + 1,
+                   min(self.PATTERN_SCORES['p_win'] - 1, total))
 
     def _get_all_lines(self, board: Board):
-        """Extracts all rows, columns, and diagonals from the board."""
-        lines = []
-        size = board.size
-        grid = board.grid
-
-        # Rows
+        grid, size = board.grid, board.size
+        # Yield rather than materialize, retaining original line traversal order.
         for r in range(size):
-            lines.append(list(grid[r, :]))
-        # Columns
+            yield tuple(grid[r, :])
         for c in range(size):
-            lines.append(list(grid[:, c]))
-        # Diagonals (top-left to bottom-right)
+            yield tuple(grid[:, c])
         for k in range(-size + 1, size):
-            lines.append(list(grid.diagonal(k)))
-        # Diagonals (top-right to bottom-left)
-        # Use fliplr to get anti-diagonals
-        grid_flipped = board.grid[:, ::-1]
+            yield tuple(grid.diagonal(k))
+        flipped = grid[:, ::-1]
         for k in range(-size + 1, size):
-            lines.append(list(grid_flipped.diagonal(k)))
+            yield tuple(flipped.diagonal(k))
 
-        return lines
+    def _evaluate_line(self, line, win_length=5, board_size=None):
+        # Full immutable context, including overridable score settings, avoids
+        # cross-player/custom-rule cache contamination. The global LRU holds no
+        # AI instances and is bounded across all searches.
+        values = tuple(line)
+        return _evaluate_line_cached(values, self.player, win_length,
+                                     board_size if board_size is not None else len(values),
+                                     tuple(self.PATTERN_SCORES.items()))
 
-    def _evaluate_line(self, line: list):
-        """
-        Evaluates a single line, focusing on win/loss and critical four-patterns.
-        Returns the score of the most critical pattern found (max absolute value), or 0.
-        """
-        n = len(line)
-        p = self.player
-        o = self.opponent
-        e = EMPTY
-        found_scores = []
 
-        # Define patterns to check (Win, Fours, Threes only)
-        patterns_to_check = {
-            # Win
-            (p, p, p, p, p): self.PATTERN_SCORES["p_win"],
-            (o, o, o, o, o): self.PATTERN_SCORES["o_win"],
-            # Open Four
-            (e, p, p, p, p, e): self.PATTERN_SCORES["p_open_four"],
-            (e, o, o, o, o, e): self.PATTERN_SCORES["o_open_four"],
-            # Closed Four
-            (o, p, p, p, p, e): self.PATTERN_SCORES["p_closed_four"],
-            (e, p, p, p, p, o): self.PATTERN_SCORES["p_closed_four"],
-            (p, o, o, o, o, e): self.PATTERN_SCORES["o_closed_four"],
-            (e, o, o, o, o, p): self.PATTERN_SCORES["o_closed_four"],
-            # Open Three
-            (e, p, p, p, e): self.PATTERN_SCORES["p_open_three"],
-            (e, o, o, o, e): self.PATTERN_SCORES["o_open_three"],
-            # Broken Three
-            (e, p, p, e, p, e): self.PATTERN_SCORES["p_broken_three"],
-            (e, p, e, p, p, e): self.PATTERN_SCORES["p_broken_three"],
-            (e, o, o, e, o, e): self.PATTERN_SCORES["o_broken_three"],
-            (e, o, e, o, o, e): self.PATTERN_SCORES["o_broken_three"],
-            # Closed Three
-            (o, p, p, p, e): self.PATTERN_SCORES["p_closed_three"],
-            (e, p, p, p, o): self.PATTERN_SCORES["p_closed_three"],
-            (p, o, o, o, e): self.PATTERN_SCORES["o_closed_three"],
-            (e, o, o, o, p): self.PATTERN_SCORES["o_closed_three"],
-        }
-        # Simplified Edge Closed Fours
-        if n >= 5:
-            if tuple(line[:5]) == (p, p, p, p, e): patterns_to_check[(p,p,p,p,e)] = self.PATTERN_SCORES["p_closed_four"]
-            if tuple(line[n-5:]) == (e, p, p, p, p): patterns_to_check[(e,p,p,p,p)] = self.PATTERN_SCORES["p_closed_four"]
-            if tuple(line[:5]) == (o, o, o, o, e): patterns_to_check[(o,o,o,o,e)] = self.PATTERN_SCORES["o_closed_four"]
-            if tuple(line[n-5:]) == (e, o, o, o, o): patterns_to_check[(e,o,o,o,o)] = self.PATTERN_SCORES["o_closed_four"]
-        # Simplified Edge Closed Threes
-        if n >= 4:
-            if tuple(line[:4]) == (p, p, p, e): patterns_to_check[(p,p,p,e)] = self.PATTERN_SCORES["p_closed_three"]
-            if tuple(line[n-4:]) == (e, p, p, p): patterns_to_check[(e,p,p,p)] = self.PATTERN_SCORES["p_closed_three"]
-            if tuple(line[:4]) == (o, o, o, e): patterns_to_check[(o,o,o,e)] = self.PATTERN_SCORES["o_closed_three"]
-            if tuple(line[n-4:]) == (e, o, o, o): patterns_to_check[(e,o,o,o)] = self.PATTERN_SCORES["o_closed_three"]
+@lru_cache(maxsize=128)
+def _line_patterns(player, win_length, scores_tuple):
+    scores = dict(scores_tuple)
+    opponent = BOARD_WHITE if player == BOARD_BLACK else BOARD_BLACK
+    p, o, e = player, opponent, EMPTY
+    patterns = []
+    def add(pattern, name):
+        patterns.append((pattern, scores[name]))
+    add((p,) * win_length, 'p_win')
+    add((o,) * win_length, 'o_win')
+    for left, stone, right, name in (
+            (e, p, e, 'p_open_four'), (e, o, e, 'o_open_four'),
+            (o, p, e, 'p_closed_four'), (e, p, o, 'p_closed_four'),
+            (p, o, e, 'o_closed_four'), (e, o, p, 'o_closed_four')):
+        add((left,) + (stone,) * (win_length - 1) + (right,), name)
+    add((e,) + (p,) * (win_length - 2) + (e,), 'p_open_three')
+    add((e,) + (o,) * (win_length - 2) + (e,), 'o_open_three')
+    # Five's two broken-three patterns keep their exact original order.
+    if win_length >= 4:
+        for stone, prefix in ((p, 'p'), (o, 'o')):
+            for split in range(win_length - 3, 0, -1):
+                add((e,) + (stone,) * split + (e,)
+                    + (stone,) * (win_length - 2 - split) + (e,),
+                    prefix + '_broken_three')
+    for left, stone, right, name in (
+            (o, p, e, 'p_closed_three'), (e, p, o, 'p_closed_three'),
+            (p, o, e, 'o_closed_three'), (e, o, p, 'o_closed_three')):
+        add((left,) + (stone,) * (win_length - 2) + (right,), name)
+    return tuple(patterns)
 
-        # Sort by length descending (helps prioritize win/longer patterns)
-        sorted_patterns = sorted(patterns_to_check.items(), key=lambda item: len(item[0]), reverse=True)
 
-        # Iterate through the line using greedy approach
-        i = 0
-        while i < n:
-            found_pattern_at_i = False
-            for pattern_tuple, score in sorted_patterns:
-                pattern_len = len(pattern_tuple)
-                if i + pattern_len <= n:
-                    segment = tuple(line[i : i + pattern_len])
-                    if segment == pattern_tuple:
-                        found_scores.append(score)
-                        # If win/loss, return immediately
-                        if score >= self.PATTERN_SCORES["p_win"] or score <= self.PATTERN_SCORES["o_win"]:
-                             return score
-                        i += pattern_len # Advance past found pattern
-                        found_pattern_at_i = True
-                        break
-            if not found_pattern_at_i:
-                i += 1
-
-        # Return score with max absolute value
-        if not found_scores:
-            return 0
+@lru_cache(maxsize=65536)
+def _evaluate_line_cached(line, player, win_length, board_size, scores_tuple):
+    scores = dict(scores_tuple)
+    opponent = BOARD_WHITE if player == BOARD_BLACK else BOARD_BLACK
+    n = len(line)
+    if n < win_length - 1:
+        return 0
+    patterns = list(_line_patterns(player, win_length, scores_tuple))
+    # Preserve the original edge-pattern meaning: only add the short pattern
+    # if it is present at the appropriate edge, then use the same greedy scan.
+    for count, tier in ((win_length - 1, 'closed_four'),
+                        (win_length - 2, 'closed_three')):
+        length = count + 1
+        if n >= length:
+            for stone, prefix in ((player, 'p'), (opponent, 'o')):
+                left = (stone,) * count + (EMPTY,)
+                right = (EMPTY,) + (stone,) * count
+                if line[:length] == left:
+                    patterns.append((left, scores[prefix + '_' + tier]))
+                if line[-length:] == right:
+                    patterns.append((right, scores[prefix + '_' + tier]))
+    patterns.sort(key=lambda item: len(item[0]), reverse=True)
+    result, i = 0, 0
+    while i < n:
+        for pattern, score in patterns:
+            length = len(pattern)
+            if line[i:i + length] != pattern:
+                continue
+            # On five's black lines an overline is not itself a win. Crossing
+            # exact-five wins are handled by Board's terminal check.
+            stone = pattern[0]
+            is_win = score in (scores['p_win'], scores['o_win'])
+            if (is_win and win_length == 5 and stone == BOARD_BLACK
+                    and ((i > 0 and line[i - 1] == stone)
+                         or (i + length < n and line[i + length] == stone))):
+                continue
+            if is_win:
+                return score
+            if abs(score) > abs(result):
+                result = score
+            i += length
+            break
         else:
-            max_abs_score = 0
-            final_score = 0
-            for s in found_scores:
-                if abs(s) > max_abs_score:
-                    max_abs_score = abs(s)
-                    final_score = s
-            return final_score
+            i += 1
+    return result
 
 
-# Factory function to create AI instance based on difficulty
 def create_ai(difficulty: str, player):
-    """Factory function to create an AI instance."""
-    if difficulty == "easy":
+    """Factory keeps Hard independent from any future Very Hard engine."""
+    if difficulty == 'easy':
         return AIEasy(player)
-    elif difficulty == "normal":
+    if difficulty == 'normal':
         return AINormal(player)
-    elif difficulty == "hard":
-        # Set desired max_depth and time_limit here
-        # Increase time limit to allow deeper search
-        # Reduce depth significantly to combat persistent time limit issues
-        # Further reduce depth to 2 as depth 3 still times out
-        return AIHard(player, depth=2, time_limit_sec=1.5) # Reduced depth to 2, time limit 1.5s
-    else:
-        print(f"Warning: Unknown AI difficulty '{difficulty}'. Defaulting to Easy.")
-        return AIEasy(player)
-
-
-# Example Usage
-if __name__ == '__main__':
-    from board import Board, BLACK as BOARD_BLACK, WHITE as BOARD_WHITE
-
-    board = Board(size=7, win_length=4)  # Smaller board for testing
-
-    # Setup scenario where White can win or Black needs to block
-    # Add move_count=0 to all place_stone calls
-    mc = 0 # Use a variable for clarity if needed, though 0 works fine here.
-    board.place_stone(2, 2, BOARD_BLACK, mc); mc += 1
-    board.place_stone(3, 3, BOARD_WHITE, mc); mc += 1
-    board.place_stone(2, 3, BOARD_BLACK, mc); mc += 1
-    board.place_stone(3, 4, BOARD_WHITE, mc); mc += 1
-    board.place_stone(2, 4, BOARD_BLACK, mc); mc += 1
-    board.place_stone(3, 5, BOARD_WHITE, mc); mc += 1 # White has 3 in a row
-    board.place_stone(1, 5, BOARD_BLACK, mc); mc += 1
-
-    print("Current board:")
-    board.print_board()
-
-    ai_normal_white = create_ai("normal", BOARD_WHITE)
-    ai_normal_black = create_ai("normal", BOARD_BLACK)
-    current_move_count = mc # Keep track of current move count for AI calls
-
-    print("\nWhite's Turn (should find winning move):")
-    white_move = ai_normal_white.find_move(board, current_move_count)
-    print(f"Normal AI (White) chose: {white_move}") # Expecting (3, 2) or (3, 6)
-    if white_move:
-        board.place_stone(white_move[0], white_move[1], BOARD_WHITE, current_move_count)
-        current_move_count += 1
-    board.print_board()
-
-    print("\nBlack's Turn (should find blocking move):")
-    # Reset white's winning move for black's turn test
-    if white_move:
-        board.grid[white_move[0], white_move[1]] = EMPTY
-        current_move_count -= 1 # Decrement count since move was reverted
-    # Let White place one winning option again
-    board.place_stone(3, 2, BOARD_WHITE, current_move_count); current_move_count += 1
-    board.print_board()
-    black_move = ai_normal_black.find_move(board, current_move_count)
-    print(f"Normal AI (Black) chose: {black_move}") # Expecting (3, 6)
-    if black_move:
-        board.place_stone(black_move[0], black_move[1], BOARD_BLACK, current_move_count)
-        current_move_count += 1
-    board.print_board()
-
-    print("\nHard AI White's Turn (should find winning move?):")
-    ai_hard_white = create_ai("hard", BOARD_WHITE)
-    # Use the latest move count for the AIHard test
-    white_move_hard = ai_hard_white.find_move(board, current_move_count)
-    print(f"Hard AI (White) chose: {white_move_hard}") # Behavior depends on depth/time
-    if white_move_hard:
-        board.place_stone(white_move_hard[0], white_move_hard[1], BOARD_WHITE, current_move_count)
-        current_move_count += 1
-    board.print_board() 
+    if difficulty == 'hard':
+        return AIHard(player)
+    logger.warning("Unknown AI difficulty %r; defaulting to Easy", difficulty)
+    return AIEasy(player)

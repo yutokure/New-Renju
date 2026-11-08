@@ -1,0 +1,310 @@
+{
+  "environment": {
+    "python": "3.12.3",
+    "numpy": "1.26.3",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "AMD64 Family 25 Model 116 Stepping 1, AuthenticAMD"
+  },
+  "seed": 20261107,
+  "depth": 2,
+  "limit": 1.5,
+  "repeats": 3,
+  "rows": [
+    {
+      "case": "opening",
+      "repeat": 0,
+      "seconds": 0.015889500005869195,
+      "move": [
+        7,
+        7
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 4,
+      "evaluations": 3,
+      "legality_checks": 236
+    },
+    {
+      "case": "white_win",
+      "repeat": 0,
+      "seconds": 0.0008684999993420206,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "black_win",
+      "repeat": 0,
+      "seconds": 0.0038545999996131286,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "forced_block",
+      "repeat": 0,
+      "seconds": 0.0018108000003849156,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 222
+    },
+    {
+      "case": "quiet_opening",
+      "repeat": 0,
+      "seconds": 0.6055294000034337,
+      "move": [
+        8,
+        9
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 121,
+      "evaluations": 107,
+      "legality_checks": 642
+    },
+    {
+      "case": "midgame",
+      "repeat": 0,
+      "seconds": 0.814544200002274,
+      "move": [
+        10,
+        6
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 169,
+      "evaluations": 145,
+      "legality_checks": 1464
+    },
+    {
+      "case": "opening",
+      "repeat": 1,
+      "seconds": 0.017472600004111882,
+      "move": [
+        7,
+        7
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 4,
+      "evaluations": 3,
+      "legality_checks": 236
+    },
+    {
+      "case": "white_win",
+      "repeat": 1,
+      "seconds": 0.001106600000639446,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "black_win",
+      "repeat": 1,
+      "seconds": 0.003982400005043019,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "forced_block",
+      "repeat": 1,
+      "seconds": 0.0017869000002974644,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 222
+    },
+    {
+      "case": "quiet_opening",
+      "repeat": 1,
+      "seconds": 0.5984480999977677,
+      "move": [
+        8,
+        9
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 121,
+      "evaluations": 107,
+      "legality_checks": 642
+    },
+    {
+      "case": "midgame",
+      "repeat": 1,
+      "seconds": 0.8884293000010075,
+      "move": [
+        10,
+        6
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 169,
+      "evaluations": 145,
+      "legality_checks": 1464
+    },
+    {
+      "case": "opening",
+      "repeat": 2,
+      "seconds": 0.027051699995354284,
+      "move": [
+        7,
+        7
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 4,
+      "evaluations": 3,
+      "legality_checks": 236
+    },
+    {
+      "case": "white_win",
+      "repeat": 2,
+      "seconds": 0.0014568999977200292,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "black_win",
+      "repeat": 2,
+      "seconds": 0.0061770999964210205,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 221
+    },
+    {
+      "case": "forced_block",
+      "repeat": 2,
+      "seconds": 0.0026947000005748123,
+      "move": [
+        7,
+        8
+      ],
+      "legal": true,
+      "correct": true,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 0,
+      "evaluations": 0,
+      "legality_checks": 222
+    },
+    {
+      "case": "quiet_opening",
+      "repeat": 2,
+      "seconds": 0.7071671999947284,
+      "move": [
+        8,
+        9
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 121,
+      "evaluations": 107,
+      "legality_checks": 642
+    },
+    {
+      "case": "midgame",
+      "repeat": 2,
+      "seconds": 1.0472023999973317,
+      "move": [
+        10,
+        6
+      ],
+      "legal": true,
+      "correct": null,
+      "nonmutating": true,
+      "completed_depth": null,
+      "nodes": 169,
+      "evaluations": 145,
+      "legality_checks": 1464
+    }
+  ],
+  "median_seconds": {
+    "opening": 0.017472600004111882,
+    "white_win": 0.001106600000639446,
+    "black_win": 0.003982400005043019,
+    "forced_block": 0.0018108000003849156,
+    "quiet_opening": 0.6055294000034337,
+    "midgame": 0.8884293000010075
+  }
+}

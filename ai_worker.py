@@ -1,0 +1,110 @@
+"""Isolated, cancellable AI work; never imports or operates the Pygame UI.
+
+The small JSON file protocol deliberately avoids multiprocessing queues/pipes.
+It also works with Windows spawn and permits hard termination of runaway code.
+"""
+import argparse
+import json
+import os
+from pathlib import Path
+import time
+import traceback
+
+
+class FileCancellation:
+    def __init__(self, path):
+        self.path = Path(path)
+
+    def is_set(self):
+        return self.path.exists()
+
+
+def _plain(value):
+    if isinstance(value, dict):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_plain(v) for v in value]
+    if hasattr(value, 'item'):
+        return value.item()
+    return value
+
+
+def run_request(request_path):
+    request_path = Path(request_path)
+    request = json.loads(request_path.read_text(encoding='utf-8'))
+    result_path = request_path.with_name('result.json')
+    cancel = FileCancellation(request_path.with_name('cancel'))
+    started = time.perf_counter()
+    latest = {'move': None, 'completed_depth': 0, 'phase': 'starting'}
+
+    def publish(update, done=False):
+        latest.update(_plain(update))
+        latest.update(token=request['token'], done=done,
+                      elapsed=time.perf_counter() - started)
+        temp = result_path.with_suffix('.tmp')
+        temp.write_text(json.dumps(latest, allow_nan=False), encoding='utf-8')
+        # A reader may briefly hold the destination on Windows. Never let a
+        # transient telemetry sharing violation abort otherwise valid search.
+        try:
+            os.replace(temp, result_path)
+        except PermissionError:
+            pass
+
+    try:
+        from board import Board, EMPTY
+        from ai import create_ai, AIHard
+        import numpy as np
+        data = request['board']
+        board = Board(data['size'], data['win_length'])
+        board.grid = np.array(data['grid'], dtype=int)
+        board.last_move = tuple(data['last_move']) if data['last_move'] is not None else None
+        ai = create_ai(request['difficulty'], request['player'])
+        if hasattr(ai, 'time_limit'):
+            ai.time_limit = request['budget']
+        if request['kind'] == 'analysis':
+            # One detached board, make/unmake for every candidate. Scores are
+            # static Hard estimates, never a proof and never a VH search score.
+            evaluator = AIHard(request['player'], time_limit_sec=request['budget'])
+            scores = []
+            deadline = time.perf_counter() + request['budget']
+            for r, c in board.get_empty_cells():
+                if cancel.is_set() or time.perf_counter() >= deadline:
+                    break
+                if not board.is_valid_move(r, c, request['player'], request['move_count']):
+                    continue
+                with board.temporary_move(r, c, request['player']):
+                    score = evaluator._evaluate_board(board)
+                scores.append([int(r), int(c), float(score)])
+            publish({'scores': scores, 'phase': 'Hard static estimate',
+                     'partial': len(scores) < len(board.get_empty_cells())}, done=True)
+        else:
+            # Publish a verified legal move before expensive Easy/Normal or
+            # engine initialization work. Keep fallback deterministic/local.
+            center = board.size // 2
+            cells = sorted(board.get_empty_cells(), key=lambda p: (abs(p[0]-center)+abs(p[1]-center), p[0], p[1]))
+            for r, c in cells:
+                if cancel.is_set():
+                    return
+                if board.is_valid_move(r, c, request['player'], request['move_count']):
+                    publish({'move': [int(r), int(c)], 'phase': 'legal fallback'})
+                    break
+            if cancel.is_set():
+                return
+            if isinstance(ai, AIHard):
+                move = ai.find_move(board, request['move_count'], cancel_event=cancel,
+                                    progress_callback=publish)
+            else:
+                move = ai.find_move(board, request['move_count'])
+            if cancel.is_set():
+                return
+            if move is not None and not board.is_valid_move(*move, request['player'], request['move_count']):
+                raise ValueError('AI returned an illegal move')
+            publish({'move': move, 'phase': 'complete'}, done=True)
+    except Exception:
+        publish({'error': traceback.format_exc(), 'phase': 'error'}, done=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('request')
+    run_request(parser.parse_args().request)
