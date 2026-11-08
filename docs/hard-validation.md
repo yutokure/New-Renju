@@ -8,7 +8,7 @@
 
 基準コミット: `d4b2edd`。正式GitHub cloneを使用（親の既存非Gitソースは変更しない）。本番変更前に `tests/test_hard_baseline.py` と直列ベンチマークを追加。変更前 **8 passed / 3 xfailed**、修正後は全xfail解除。
 
-2026-11-08最終計測時: **93 passed** (`python -B -m pytest -q`)。実プロセスのEasy/Normal/Hard、合法手、例外復元、キャンセル、完成深さ、TT/評価キャッシュ、3〜7目、旧JSON、研究評価、Menu/Esc/Rematch/古い結果/不正応答などを含む。GitHub CIをWindows/Linux向けに追加したが、ローカル結果とCI実行結果は区別する。
+2026-11-08最終計測時: **93 passed** (`python -B -m pytest -q`)。実プロセスのEasy/Normal/Hard、合法手、例外復元、キャンセル、完成深さ、TT/評価キャッシュ、3〜7目、旧JSON、研究評価、Menu/Esc/Rematch/古い結果/不正応答などを含む。オーナーの指示により追加したCI設定は撤去し、以後はCIを導入・実行せずローカル検証のみを使用する。
 
 ## 性能：同じ手順の直列比較
 
