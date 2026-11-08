@@ -106,7 +106,7 @@ def openings():
         yield [(7,7),(6,7),third]
 
 
-def matches(output, games, budget, normal, opponent, max_moves, legacy, hard_a, challenger='very_hard'):
+def matches(output, games, budget, normal, opponent, max_moves, legacy, hard_a, challenger='very_hard', opening_file=None):
     rows=[]
     path=Path(output)
     def save():
@@ -123,7 +123,19 @@ def matches(output, games, budget, normal, opponent, max_moves, legacy, hard_a, 
                                     'wilson95_decisive':wilson(w,len(decisive)),
                                     'caution':'Wilson treats games independent; color-paired correlated games/openings reduce effective sample size; not a release strength PASS by itself.'}}
         path.write_text(json.dumps(data,indent=2),encoding='utf-8')
-    opening_list=list(openings())
+    opening_list = json.loads(Path(opening_file).read_text(encoding='utf-8')) if opening_file else list(openings())
+    if not isinstance(opening_list,list) or not opening_list:
+        raise ValueError('Opening file must contain a nonempty JSON list of coordinate histories')
+    for opening in opening_list:
+        referee=Board()
+        if not isinstance(opening,list) or len(opening)%2!=1:
+            raise ValueError('Each opening must be an odd-length legal history')
+        for count,move in enumerate(opening):
+            if (not isinstance(move,(list,tuple)) or len(move)!=2
+                    or any(type(v) is not int for v in move)
+                    or not referee.place_stone(*move,1+count%2,count)
+                    or referee.check_win(1+count%2)[0]):
+                raise ValueError('Invalid or terminal opening')
     for game_id in range(games):
         opening=opening_list[(game_id//2)%len(opening_list)]
         vh_color=BLACK if game_id%2==0 else WHITE
@@ -194,6 +206,7 @@ if __name__=='__main__':
     p.add_argument('--opponent',choices=['old_hard','hard_a','hard'],default='hard')
     p.add_argument('--challenger',choices=['very_hard','hard','hard_a'],default='very_hard')
     p.add_argument('--max-moves',type=int,default=100)
+    p.add_argument('--opening-file',help='Predeclared legal odd-length opening histories; no result selection')
     args=p.parse_args()
     Path(args.output).parent.mkdir(parents=True,exist_ok=True)
     legacy=historical_ai('d4b2edd')
@@ -201,4 +214,4 @@ if __name__=='__main__':
     if args.mode=='tactics':
         tactics(args.output,args.budget,legacy,hard_a)
     else:
-        matches(args.output,args.games,args.budget,args.normal,args.opponent,args.max_moves,legacy,hard_a,args.challenger)
+        matches(args.output,args.games,args.budget,args.normal,args.opponent,args.max_moves,legacy,hard_a,args.challenger,args.opening_file)
