@@ -7,7 +7,6 @@ RELEASE_TAG = 'v' + VERSION
 ZIP_NAME = 'Gomoku-' + DISPLAY_VERSION + '-Windows-x64.zip'
 EXE_NAME = PRODUCT_NAME + '.exe'
 BUNDLE_DIRECTORY = 'Gomoku-' + DISPLAY_VERSION
-DATA_DIRECTORY = 'Gomoku2'
 REPOSITORY_URL = 'https://github.com/yutokure/New-Renju'
 LICENSE_NAME = 'MIT License'
 

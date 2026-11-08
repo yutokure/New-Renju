@@ -16,6 +16,7 @@ if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--ai-worker
     raise SystemExit(0)
 
 import pygame
+from ui_fonts import ui_font
 import sys
 import os # Import os module for listing files
 import glob # Import glob for pattern matching
@@ -111,12 +112,12 @@ def _run_main(worker_directory=None):
     current_game = None  # Placeholder for the active Game instance
 
     # --- Fonts ---
-    title_font = pygame.font.Font(None, 70)
-    menu_font = pygame.font.Font(None, 50)
-    settings_label_font = pygame.font.Font(None, 36)
-    settings_value_font = pygame.font.Font(None, 36)
-    settings_button_font = pygame.font.Font(None, 40)  # Font for < > buttons
-    list_font = pygame.font.Font(None, 36) # Font for file list
+    title_font = ui_font(70)
+    menu_font = ui_font(50)
+    settings_label_font = ui_font(36)
+    settings_value_font = ui_font(36)
+    settings_button_font = ui_font(40)  # Font for < > buttons
+    list_font = ui_font(36) # Font for file list
 
     # --- Menu UI Elements ---
     title_text = title_font.render(PRODUCT_NAME, True, TEXT_COLOR)
@@ -493,7 +494,7 @@ def _run_main(worker_directory=None):
                 for button in menu_buttons:
                     button.draw(screen)
                 if menu_notice:
-                    notice = pygame.font.Font(None, 24).render(menu_notice[:95], True, TEXT_COLOR)
+                    notice = ui_font(24).render(menu_notice[:95], True, TEXT_COLOR)
                     screen.blit(notice, notice.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 25)))
 
             elif game_state == STATE_SETTINGS:
@@ -523,7 +524,7 @@ def _run_main(worker_directory=None):
                     ai_difficulty_prev_button.draw(screen)
                     ai_difficulty_next_button.draw(screen)
                 back_button.draw(screen)
-                hint_font = pygame.font.Font(None,24)
+                hint_font = ui_font(24)
                 hints = [rules_label(settings),
                          'Black = first player (left). White = second player (right).',
                          'Opening: center, then above / above-right, then central 5x5.',
@@ -551,7 +552,7 @@ def _run_main(worker_directory=None):
                      load_next_page_button.draw(screen)
                 load_back_button.draw(screen)
                 if load_notice:
-                    notice = pygame.font.Font(None, 24).render(load_notice[:100], True, TEXT_COLOR)
+                    notice = ui_font(24).render(load_notice[:100], True, TEXT_COLOR)
                     screen.blit(notice, notice.get_rect(center=(SCREEN_WIDTH // 2, page_nav_y - 75)))
 
             elif game_state == STATE_GAME:
@@ -560,16 +561,16 @@ def _run_main(worker_directory=None):
                 else:
                     # Fallback if game state is GAME but no instance exists
                     screen.fill(WHITE) # Fill white for error screen
-                    font = pygame.font.Font(None, 30)
+                    font = ui_font(30)
                     text = font.render("Error: Game not initialized.", True, TEXT_COLOR)
                     rect = text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
                     screen.blit(text, rect)
 
             if rules_visible:
-                draw_rules(screen,settings,pygame.font.Font(None,24))
+                draw_rules(screen,settings,ui_font(24))
             if about_visible:
                 screen.fill((248,248,242))
-                about_font = pygame.font.Font(None,28)
+                about_font = ui_font(28)
                 for index,line in enumerate(about_lines()):
                     text = about_font.render(line,True,TEXT_COLOR)
                     screen.blit(text,(35,60+index*48))

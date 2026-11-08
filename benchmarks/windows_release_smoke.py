@@ -17,8 +17,9 @@ from PIL import ImageGrab
 class App:
     def __init__(self,exe,local=None,temp=None,cwd=None):
         self.exe=Path(exe).resolve()
-        self.local=Path(local) if local is not None else Path(os.environ['LOCALAPPDATA'])
-        self.root=self.local/'Gomoku2'
+        self.root=self.exe.parent
+        self.observed_children=set()
+        self.observed_directories=set()
         self.env=os.environ.copy()
         for key in ('SDL_VIDEODRIVER','SDL_AUDIODRIVER'):
             self.env.pop(key,None)
@@ -77,16 +78,10 @@ class App:
         self.user.PostMessageW(self.hwnd,0x101,key,0)
         time.sleep(pause)
     def capture(self,path):
-        rect=wintypes.RECT()
-        self.user.GetWindowRect(self.hwnd,ctypes.byref(rect))
-        self.user.ShowWindow(self.hwnd,9)
-        self.user.SetForegroundWindow(self.hwnd)
-        time.sleep(.25)
-        # Record native visible desktop evidence; verify each image manually.
-        ImageGrab.grab(bbox=(rect.left,rect.top,rect.right,rect.bottom)).save(path)
+        from benchmarks.capture_window import capture
+        capture(self.hwnd,path)
     def saves(self):
-        directory=self.root/'Saves'
-        return set(directory.glob('gomoku_save_*.json')) if directory.is_dir() else set()
+        return set(self.root.glob('gomoku_save_*.json'))
     def save(self):
         before=self.saves()
         self.click(500,60)
@@ -120,8 +115,7 @@ class App:
         workers=self.root/'workers'
         leftovers=list(workers.glob('renju-ai-*')) if workers.is_dir() else []
         assert not leftovers,leftovers
-        saves=self.root/'Saves'
-        assert not list(saves.glob('.gomoku-save-*.tmp')) if saves.is_dir() else True
+        assert not list(self.root.glob('.gomoku-save-*.tmp'))
     def kill_owned(self):
         if self.proc.poll() is None:
             self.proc.kill()
@@ -132,7 +126,8 @@ def run(exe,output,local=None,temp=None):
     output=Path(output).resolve()
     output.mkdir(parents=True,exist_ok=True)
     report={'exe':str(Path(exe).resolve()),'no_arguments':True,'os':os.name,
-            'elevated':bool(ctypes.windll.shell32.IsUserAnAdmin()),'rows':[]}
+            'elevated':bool(ctypes.windll.shell32.IsUserAnAdmin()),
+            'portable_root':str(Path(exe).resolve().parent),'rows':[]}
     for difficulty in ('easy','normal','hard','very_hard'):
         app=App(exe,local,temp)
         try:
@@ -200,11 +195,8 @@ def run(exe,output,local=None,temp=None):
             app.start()
             time.sleep(1.7)
             if mode==2:
-                saved,_=app.save()
-                assert saved['move_history']==[[7,7]],saved
-                # Save cancels AI Telop into fade-out; update must finish that
-                # transition before a human point is accepted, as in normal UI.
-                time.sleep(.5)
+                # Wait for the AI placement animation before human input.
+                time.sleep(1.0)
                 app.cell(6,7)
                 time.sleep(2.0)
             else:

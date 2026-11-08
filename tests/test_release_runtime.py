@@ -46,31 +46,26 @@ def test_single_product_identity():
         assert value in about
 
 
-def test_default_windows_worker_root_is_user_data_not_temp(tmp_path,monkeypatch):
-    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'日本語 user'))
+def test_default_windows_worker_root_is_beside_exe(tmp_path,monkeypatch):
+    exe_root=tmp_path/'日本語 portable'
+    exe_root.mkdir()
+    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True,executable=str(exe_root/'Gomoku 2.0.exe')))
+    monkeypatch.setenv('LOCALAPPDATA','invalid-unused')
+    monkeypatch.setenv('TEMP','invalid-unused')
     root=app_paths.default_worker_directory()
     if os.name=='nt':
-        assert root==tmp_path/'日本語 user'/'Gomoku2'/'workers' and root.is_dir()
-        assert str(root) != os.environ.get('TEMP')
+        assert root==exe_root/'workers' and root.is_dir()
 
 
-@pytest.mark.parametrize('value',['','relative/path'])
-def test_invalid_user_data_never_falls_back(value,monkeypatch):
-    monkeypatch.setenv('LOCALAPPDATA',value)
-    with pytest.raises(OSError,match='LOCALAPPDATA'):
-        app_paths.user_data_root()
-
-
-def test_frozen_save_and_list_agree_without_chdir(tmp_path,monkeypatch):
-    if os.name!='nt':
-        pytest.skip('Windows policy')
-    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'user'))
-    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True))
+def test_portable_save_and_list_agree_without_chdir(tmp_path,monkeypatch):
+    exe_root=tmp_path/'portable'
+    exe_root.mkdir()
+    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True,executable=str(exe_root/'Gomoku 2.0.exe')))
     work=tmp_path/'unrelated'
     work.mkdir()
     monkeypatch.chdir(work)
     root=app_paths.save_directory()
-    assert root==tmp_path/'user'/'Gomoku2'/'Saves'
+    assert root==exe_root
     assert app_paths.save_search_directories()==[root,work]
     assert Path.cwd()==work
     import main
@@ -79,6 +74,16 @@ def test_frozen_save_and_list_agree_without_chdir(tmp_path,monkeypatch):
     saved.write_text('{}')
     legacy.write_text('{}')
     assert set(main._get_save_files())=={str(saved),str(legacy)}
+
+
+def test_portable_root_does_not_use_meipass_or_cwd(tmp_path,monkeypatch):
+    exe_root=tmp_path/'portable'
+    exe_root.mkdir()
+    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True,
+        executable=str(exe_root/'Gomoku 2.0.exe'),_MEIPASS=str(tmp_path/'internal')))
+    monkeypatch.chdir(tmp_path)
+    assert app_paths.portable_root()==exe_root
+    assert app_paths.save_directory()==exe_root
 
 
 def test_source_save_stays_cwd(tmp_path,monkeypatch):
@@ -90,13 +95,23 @@ def test_source_save_stays_cwd(tmp_path,monkeypatch):
 def test_worker_root_obstruction_fails_no_spawn(tmp_path,monkeypatch):
     if os.name!='nt':
         pytest.skip('Windows policy')
-    user=tmp_path/'user'
-    (user/'Gomoku2').mkdir(parents=True)
-    (user/'Gomoku2'/'workers').write_text('blocked')
-    monkeypatch.setenv('LOCALAPPDATA',str(user))
+    (tmp_path/'workers').write_text('blocked')
+    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True,executable=str(tmp_path/'Gomoku 2.0.exe')))
     monkeypatch.setattr(ai_async.subprocess,'Popen',lambda *a,**k:pytest.fail('must not spawn'))
     runner=ai_async.AsyncAI()
     with pytest.raises(OSError):
+        runner.start(Board(),BLACK,0,'easy')
+    runner.close()
+    assert not list(tmp_path.glob('renju-ai-*'))
+
+
+def test_explicit_worker_override_bypasses_default_root(tmp_path,monkeypatch):
+    def fail():
+        pytest.fail('explicit root must not consult default')
+    monkeypatch.setattr(app_paths,'default_worker_directory',fail)
+    monkeypatch.setattr(ai_async.subprocess,'Popen',lambda *a,**k: (_ for _ in ()).throw(OSError('expected spawn')))
+    runner=ai_async.AsyncAI(worker_directory=tmp_path)
+    with pytest.raises(OSError,match='expected spawn'):
         runner.start(Board(),BLACK,0,'easy')
     runner.close()
     assert not list(tmp_path.glob('renju-ai-*'))
@@ -174,8 +189,7 @@ def test_game_close_attempts_all_runners_and_retains_failure(monkeypatch):
 def test_listing_legacy_does_not_create_user_save_directory(tmp_path,monkeypatch):
     if os.name!='nt':
         pytest.skip('Windows policy')
-    monkeypatch.setenv('LOCALAPPDATA',str(tmp_path/'user'))
-    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True))
+    monkeypatch.setattr(app_paths,'sys',SimpleNamespace(frozen=True,executable=str(tmp_path/'Gomoku 2.0.exe')))
     monkeypatch.chdir(tmp_path)
     (tmp_path/'gomoku_save_old.json').write_text('{}')
     def forbidden(*args,**kwargs):
@@ -183,6 +197,26 @@ def test_listing_legacy_does_not_create_user_save_directory(tmp_path,monkeypatch
     monkeypatch.setattr(Path,'mkdir',forbidden)
     import main
     assert str(tmp_path/'gomoku_save_old.json') in main._get_save_files()
+
+
+def test_japanese_font_missing_uses_licensed_ui_fallback(monkeypatch):
+    import pygame
+    import resources
+    from settings import Settings
+    from constants import PLAYER_HUMAN
+    from game import Game
+    actual=resources.asset_path
+    monkeypatch.setattr(resources,'asset_path',lambda name:'missing-font.otf' if name.endswith('.otf') else actual(name))
+    pygame.init()
+    instance=None
+    try:
+        settings=Settings();settings.set_game_mode((PLAYER_HUMAN,PLAYER_HUMAN))
+        instance=Game(pygame.display.set_mode((800,600)),settings)
+        assert instance.telop_font.size('Game started')[0]>0
+    finally:
+        if instance:
+            instance.close()
+        pygame.quit()
 
 
 def test_startup_exception_quits_pygame(monkeypatch):

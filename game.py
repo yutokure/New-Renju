@@ -1,4 +1,5 @@
 import pygame
+from ui_fonts import ui_font
 # import time # For potential AI delay
 from constants import (
     SCREEN_WIDTH, SCREEN_HEIGHT, BOARD_COLOR, LINE_COLOR, BLACK, WHITE,
@@ -60,20 +61,20 @@ class Game:
         self.screen = screen
         self.settings = settings
         self.worker_directory = worker_directory
-        self.font = pygame.font.Font(None, 30)
-        self.small_font = pygame.font.Font(None, 24) # Font for move counter
-        self.game_over_font = pygame.font.Font(None, 72)
+        self.font = ui_font(30)
+        self.small_font = ui_font(24) # Font for move counter
+        self.game_over_font = ui_font(72)
         # --- Use a Japanese Font --- #
         # !!! Replace with the actual path to your Japanese font file !!!
         from resources import asset_path
         japanese_font_path = asset_path('fonts/YasashisaGothicBold-V2.otf')
         try:
             self.telop_font = pygame.font.Font(japanese_font_path, 48)
-        except pygame.error as e:
+        except (pygame.error, OSError) as e:
             print(f"Error loading Japanese font '{japanese_font_path}': {e}")
             print("Falling back to default font for telop.")
-            self.telop_font = pygame.font.Font(None, 48) # Fallback
-        self.evaluation_font = pygame.font.Font(None, 16) # Font for evaluation scores
+            self.telop_font = ui_font(48) # Fallback
+        self.evaluation_font = ui_font(16) # Font for evaluation scores
 
         # Initialize Telop instance
         self.telop = Telop(screen_width=SCREEN_WIDTH, # Pass screen width

@@ -1,9 +1,9 @@
-"""Bounded worker directories inheriting the user's application-data ACL.
+"""Bounded worker directories inheriting the portable folder's existing ACL.
 
 Python 3.12 tempfile.mkdtemp uses mkdir(mode=0700) and retries PermissionError
 many times on Windows when access(parent) succeeds. That can block the GUI and
 apply a restrictive child DACL incompatible with inherited execution tokens.
-Use the existing per-user parent's ACL, never modify it or broaden ACL entries.
+Use the existing portable parent's ACL, never modify it or broaden ACL entries.
 """
 from pathlib import Path
 import shutil

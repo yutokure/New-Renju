@@ -29,6 +29,29 @@ def digest(path):
     return h.hexdigest()
 
 
+def guard_runtime_data(bundle):
+    if list(bundle.glob('gomoku_save_*.json')) or (bundle/'workers').exists():
+        raise SystemExit('Existing portable data detected; back up/move the whole tested folder before rebuilding')
+
+
+def rewrite_missing_doc_links(bundle, commit):
+    import re
+    for path in bundle.rglob('*.md'):
+        if '_internal' in path.relative_to(bundle).parts:
+            continue
+        def resolve(match):
+            destination=match.group(1)
+            if destination.startswith(('#','https://','http://','mailto:')):
+                return match.group(0)
+            local=destination.split('#',1)[0]
+            target=(path.parent/local).resolve()
+            if target.is_relative_to(bundle.resolve()) and target.exists():
+                return match.group(0)
+            relative=target.relative_to(bundle.resolve()) if target.is_relative_to(bundle.resolve()) else Path(local).name
+            return ']('+REPOSITORY_URL+'/blob/'+commit+'/'+str(relative).replace('\\','/')+')'
+        path.write_text(re.sub(r'\]\(<([^>]+)>\)',resolve,path.read_text(encoding='utf-8')),encoding='utf-8')
+
+
 def version_file(path):
     from PyInstaller.utils.win32.versioninfo import (VSVersionInfo,FixedFileInfo,
         StringFileInfo,StringTable,StringStruct,VarFileInfo,VarStruct)
@@ -55,6 +78,8 @@ def main():
         if not args.build_only:
             raise SystemExit('Refusing release ZIP from a dirty working tree; commit accepted changes first')
         print('WARNING: working tree is dirty; development build is not releasable',flush=True)
+    bundle=ROOT/'dist'/BUNDLE_DIRECTORY
+    guard_runtime_data(bundle)  # Before COLLECT can replace an existing portable folder.
     build=ROOT/'build'
     build.mkdir(exist_ok=True)
     version_file(build/'windows-version.txt')
@@ -65,23 +90,39 @@ def main():
         f'{PRODUCT_NAME}\nVersion {VERSION}\n\nExtract the complete ZIP and open {EXE_NAME}.\n'
         'No Python install is required. Windows 10/11 x64.\n'
         'Manual: MANUAL.md. License: LICENSE. Third-party notices: _internal/THIRD_PARTY_LICENSES/.\n'
-        'Saves: %LOCALAPPDATA%\\Gomoku2\\Saves. Workers: %LOCALAPPDATA%\\Gomoku2\\workers.\n'
+        'Portable: saved games are beside this exe; worker temporary data is in workers/.\n'
+        'Use an extracted writable folder. No TEMP/LocalAppData fallback or elevation is used.\n'
         'Check the official release source and SHA-256 before running unsigned software.\n'
         f'{REPOSITORY_URL}\n',encoding='utf-8')
     (bundle/'MANUAL.md').write_text((ROOT/'docs/USER_MANUAL.md').read_text(encoding='utf-8')
         .replace('](<../','](<').replace('](<RELEASE_NOTES_2.0.md','](<docs/RELEASE_NOTES_2.0.md'),encoding='utf-8')
-    shutil.copytree(ROOT/'docs',bundle/'docs',dirs_exist_ok=True)
-    shutil.copytree(ROOT/'benchmarks/results',bundle/'benchmarks/results',dirs_exist_ok=True,
-                    ignore=shutil.ignore_patterns('*.prof','g05-*','*.json','*.txt'))
+    (bundle/'docs').mkdir(exist_ok=True)
+    for name in ('USER_MANUAL.md','RELEASE_NOTES_2.0.md'):
+        shutil.copyfile(ROOT/'docs'/name,bundle/'docs'/name)
+    images=bundle/'benchmarks/results'
+    images.mkdir(parents=True,exist_ok=True)
+    for name in ('g04-game.png','g04-settings.png','g04-rules.png'):
+        shutil.copyfile(ROOT/'benchmarks/results'/name,images/name)
     shutil.copyfile(ROOT/'README.md',bundle/'README.md')
+    shutil.copyfile(ROOT/'requirements.txt',bundle/'requirements.txt')
+    # Source-only links in the manual lead to the matching release source, not
+    # nonexistent .py files inside the standalone distribution.
+    for manual in (bundle/'MANUAL.md',bundle/'docs/USER_MANUAL.md'):
+        text=manual.read_text(encoding='utf-8')
+        for relative in ('main.py','../main.py'):
+            text=text.replace('](<'+relative+'>)',']('+REPOSITORY_URL+'/blob/'+commit+'/main.py)')
+        manual.write_text(text,encoding='utf-8')
     shutil.copyfile(ROOT/'LICENSE',bundle/'LICENSE')
+    rewrite_missing_doc_links(bundle,commit)
+    guard_runtime_data(bundle)
     manifest={'product':PRODUCT_NAME,'version':VERSION,'source_commit':commit,
               'working_tree_clean':not bool(status.strip()),'python':platform.python_version(),
               'dependencies':{name:importlib.metadata.version(name) for name in ('pygame','numpy','pyinstaller')},
               'source_files':{str(p.relative_to(ROOT)).replace('\\','/'):digest(p)
                   for p in ROOT.rglob('*') if p.is_file() and
-                  p.suffix in ('.py','.spec','.json','.otf','.md','.txt') and
-                  not any(part in ('build','dist','.git','__pycache__','.pytest_cache')
+                  p.suffix in ('.py','.spec','.json','.otf','.ttf','.md','.txt') and
+                  not p.name.startswith('gomoku_save_') and
+                  not any(part in ('build','dist','workers','.git','__pycache__','.pytest_cache')
                           for part in p.relative_to(ROOT).parts)},
               'files':{str(p.relative_to(bundle)).replace('\\','/'):digest(p)
                        for p in sorted(bundle.rglob('*')) if p.is_file()}}
