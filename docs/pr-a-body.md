@@ -12,7 +12,7 @@ Conservative Hard repairs, retaining minimax + alpha-beta + iterative deepening 
 
 ## Validation
 
-- 93 tests passed locally (Python 3.12.3 / Windows 11 / pygame 2.5.2 / NumPy 1.26.3).
+- 136 tests passed locally (3.14s), including the independent shallow search-oracle/explicit-limitation suite (Python 3.12.3 / Windows 11 / pygame 2.5.2 / NumPy 1.26.3).
 - Baseline frozen before production edits: 8 passed, 3 reproduced known defects (now fixed).
 - Profiled median quiet/midgame: 605.53/888.43ms -> 58.52/85.47ms; immediate forced-block path costs ~4.3ms more due to correctness checks. All tactical baseline answers remain legal/correct/nonmutating.
 - Real SDL Windows smoke (not dummy): max frame 18.03ms, Esc cancellation 1.25ms, worker stopped.
