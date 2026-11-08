@@ -35,7 +35,7 @@ def wait_result(runner, board, player, count, timeout=6):
     pytest.fail('Worker failed wall-clock guard')
 
 
-@pytest.mark.parametrize('difficulty', ['easy', 'normal', 'hard'])
+@pytest.mark.parametrize('difficulty', ['easy', 'normal', 'hard', 'very_hard'])
 def test_real_worker_legal_nonmutating(difficulty):
     board = Board()
     grid = board.grid.copy()
@@ -79,6 +79,22 @@ def test_external_watchdog_uses_only_verified_result():
         answer = runner.poll(board, BLACK, 0)
         assert answer['move'] == (7,7)
         assert answer['timed_out']
+    finally:
+        runner.close()
+
+
+def test_finished_worker_result_bypasses_progress_read_throttle():
+    board = Board()
+    runner = AsyncAI(startup_grace=0)
+    try:
+        runner.start(board, BLACK, 0, 'hard', budget=0)
+        task = runner.task
+        task.read_after = time.perf_counter() + 100
+        (Path(task.directory.name) / 'result.json').write_text(json.dumps(
+            {'token': task.token, 'move': [7,7], 'done': True}))
+        result = runner.poll(board, BLACK, 0)
+        assert result['move'] == (7,7)
+        assert not result['timed_out']
     finally:
         runner.close()
 

@@ -25,6 +25,7 @@ class _Task:
     budget: float
     result: object = None
     read_after: float = 0.0
+    resources: object = None
 
 
 def position_key(board, player, move_count):
@@ -39,8 +40,11 @@ class AsyncAI:
     A 2-second startup grace covers Python/NumPy import on Windows; search
     itself uses the engine's normal deadline. Wall cap = budget + grace.
     """
-    def __init__(self, startup_grace=2.0):
-        self.startup_grace = max(0.0, startup_grace)
+    def __init__(self, startup_grace=2.0, memory_limit_mb=512):
+        if not math.isfinite(startup_grace) or startup_grace < 0:
+            raise ValueError('startup_grace must be finite and nonnegative')
+        self.startup_grace = startup_grace
+        self.memory_limit_mb = memory_limit_mb
         self.task = None
         self.retired = []
         self.last_info = {}
@@ -54,7 +58,9 @@ class AsyncAI:
         self.reap()
         if budget is None:
             budget = 5.0 if difficulty == 'very_hard' else 1.5
-        budget = max(0.0, float(budget))
+        budget = float(budget)
+        if not math.isfinite(budget) or budget < 0:
+            raise ValueError('AI budget must be finite and nonnegative')
         directory = tempfile.TemporaryDirectory(prefix='renju-ai-')
         root = Path(directory.name)
         token = uuid.uuid4().hex
@@ -80,14 +86,27 @@ class AsyncAI:
         except Exception:
             directory.cleanup()
             raise
+        resources = None
+        try:
+            from worker_limits import ProcessBudget
+            resources = ProcessBudget(process, self.memory_limit_mb)
+        except (OSError, ValueError, TypeError):
+            # A tiny worker can finish before job assignment; its work is done
+            # and final result still safe to read. Otherwise fail closed.
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=1.0)
+                directory.cleanup()
+                raise
         self.task = _Task(process, directory, token, position_key(board, player, move_count),
-                          time.perf_counter(), budget)
-        self.last_info = {'phase': 'starting', 'elapsed': 0.0}
+                          time.perf_counter(), budget, resources=resources)
+        self.last_info = {'phase': 'starting', 'elapsed': 0.0,
+                          'resource_limits': resources.metadata if resources else {'enforced': False, 'diagnostic': 'worker already exited'}}
         return token
 
-    def _read_result(self, task):
+    def _read_result(self, task, force=False):
         now = time.perf_counter()
-        if now < task.read_after:
+        if not force and now < task.read_after:
             return
         task.read_after = now + 0.03
         try:
@@ -110,6 +129,10 @@ class AsyncAI:
                         type(row[2]) not in (int, float) or not math.isfinite(row[2])
                         for row in scores):
                     return
+            if 'invalid_cells' in result and (not isinstance(result['invalid_cells'], list) or any(
+                    not isinstance(p, list) or len(p) != 2 or
+                    not all(type(x) is int for x in p) for p in result['invalid_cells'])):
+                return
             task.result = result
             self.last_info = result
         except (OSError, ValueError, OverflowError):
@@ -126,19 +149,30 @@ class AsyncAI:
         self._read_result(task)
         expired = time.perf_counter() - task.started >= task.budget + self.startup_grace
         exited = task.process.poll() is not None
+        if exited or expired:
+            # A fast worker can finish between throttled reads. Never confuse
+            # an unread final atomic result with a worker that produced none.
+            self._read_result(task, force=True)
         done = bool(task.result and task.result.get('done'))
         if not (expired or exited or done):
             return None
         result = dict(task.result or {'move': None, 'error': 'Worker ended without a result'})
         result['timed_out'] = expired and not done
+        result['resource_limits'] = task.resources.metadata if task.resources else {'enforced': False, 'diagnostic': 'worker exited before limit attached'}
         self._retire(task)
         self.task = None
         if 'move' in result and result['move'] is not None:
             move = result['move']
-            if (not isinstance(move, (list, tuple)) or len(move) != 2 or
-                    not all(type(x) is int for x in move) or
-                    not board.is_valid_move(*move, player, move_count)):
-                result.update(move=None, error='Rejected invalid worker result')
+            valid_shape = (isinstance(move, (list, tuple)) and len(move) == 2
+                           and all(type(x) is int for x in move))
+            from board import RuleValidationTimeout
+            try:
+                legal = valid_shape and board.is_valid_move(*move, player, move_count)
+            except RuleValidationTimeout:
+                legal = False
+                result['error'] = 'Rule validation incomplete (UI budget); move not applied'
+            if not legal:
+                result.update(move=None, error=result.get('error') or 'Rejected invalid worker result')
             else:
                 result['move'] = tuple(move)
         self.last_info = result
@@ -172,6 +206,8 @@ class AsyncAI:
             else:
                 task.process.wait(timeout=0)
                 try:
+                    if task.resources is not None:
+                        task.resources.close()
                     task.directory.cleanup()
                 except OSError:
                     remaining.append(task)
@@ -183,5 +219,7 @@ class AsyncAI:
             if task.process.poll() is None:
                 task.process.kill()
             task.process.wait(timeout=1.0)
+            if task.resources is not None:
+                task.resources.close()
             task.directory.cleanup()
         self.retired.clear()
