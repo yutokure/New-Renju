@@ -8,7 +8,7 @@ Conservative Hard repairs, retaining minimax + alpha-beta + iterative deepening 
 - Independent opponent legality; explicit custom connect-3/4/6/7 semantics
 - Detached subprocess execution shared by all difficulties, cancellation/watchdog/stale-position rejection
 - Detached cached research (Hard static), per-position visual caches, save/replay compatibility
-- Regression tests + Windows/Linux CI and before/after serial benchmark evidence
+- Local regression tests and before/after serial benchmark evidence; no CI is included or used per owner instruction
 
 ## Validation
 
