@@ -333,6 +333,15 @@ class AsyncAI:
         remaining = []
         for task in self.retired:
             if task.process.poll() is None:
+                # Retired workers must not outlive cancellation/watchdog expiry
+                # indefinitely when terminate fails or has not taken effect.
+                # Never wait here: keep ownership and retry on the next reap if
+                # kill fails or the OS has not reported the exit yet.
+                try:
+                    task.process.kill()
+                except OSError:
+                    pass
+            if task.process.poll() is None:
                 remaining.append(task)
             else:
                 task.process.wait(timeout=0)
