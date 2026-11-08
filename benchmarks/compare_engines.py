@@ -138,7 +138,8 @@ def matches(output, games, budget, normal, opponent, max_moves, legacy, hard_a, 
             engines[player]=make_ai(name,player,limit,legacy,hard_a)
         times={BLACK:[],WHITE:[]}
         result={'id':game_id,'pair':game_id//2,'very_hard_color':vh_color,'opening':opening,
-                'outcome':'censored','winner':None,'moves':history,'errors':[]}
+                'outcome':'censored','winner':None,'moves':history,'errors':[],
+                'source_sha256_at_game_start': environment()['source_sha256']}
         start=time.perf_counter()
         while len(history)<max_moves:
             count=len(history)

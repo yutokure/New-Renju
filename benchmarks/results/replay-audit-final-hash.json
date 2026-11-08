@@ -1,0 +1,10 @@
+[
+  {
+    "file": "benchmarks/results/matches-final-hash-hard-1_5.json",
+    "games": 16,
+    "legal_placements_replayed": 614,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  }
+]

@@ -30,6 +30,6 @@ WindowsPython実UI60frames最大19.56ms、Esc2.02ms。512MiB Job cap、BLAS1thre
 
 ## 次の具体作業
 
-- hash-pinned最終16局同一1.5秒比較のジョブを回収し、群集計/再生監査/文書を更新。
+- hash-pinned最終16局は回収済み、VH14勝2敗/614合法着手、参考Wilson64.0〜96.5%。群集計/再生監査も保存済み。
 - DraftPRの最新説明とローカルテスト/CI不存在/未マージを確認。
 - ハンドオフ時も全体PASSにしない。未達を隠してGoalcompleteにしない。改善作業を続けるならUI非同期一点判定と配布TEMP問題のアプリ側可搬対策（Windows権限変更ではない）を優先。

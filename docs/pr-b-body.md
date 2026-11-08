@@ -18,7 +18,7 @@
 - Equal1.5s: VH **20W4L vs improved Hard**, **22W2L vs old Hard**; normal5s vs Hard1.5s **16W0L**.
 - Eight unique purposeful openings, paired colors/repeats; confidence intervals and dependence warnings included. Not a universal Elo/strength claim.
 - Nominated tactical roots7/7 VH vs6/7 Hard; three proof-positive positions certified; counterattack negatives remain UNKNOWN.
-- All80 recorded games/3264 placements legally replayed with independent terminal geometry.
+- Initial80 games/3264 placements plus a fresh source-hashed16-game equal-budget sample (VH14W2L,614 placements) legally replayed with independent terminal geometry; repeated openings remain dependent samples.
 - Python Windows native UI:60frames, max19.56ms; Esc2.02ms; worker RSS~39MB, commit~28MB after removing unused BLAS pools; controlled memory cap and parent-death tests pass.
 
 ## Overall acceptance: CHANGES REQUESTED
