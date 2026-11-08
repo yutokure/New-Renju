@@ -85,9 +85,9 @@ class AsyncAI:
         self.last_info = {'phase': 'starting', 'elapsed': 0.0}
         return token
 
-    def _read_result(self, task):
+    def _read_result(self, task, force=False):
         now = time.perf_counter()
-        if now < task.read_after:
+        if not force and now < task.read_after:
             return
         task.read_after = now + 0.03
         try:
@@ -126,6 +126,9 @@ class AsyncAI:
         self._read_result(task)
         expired = time.perf_counter() - task.started >= task.budget + self.startup_grace
         exited = task.process.poll() is not None
+        if exited or expired:
+            # Fast workers can finish between throttled progress reads.
+            self._read_result(task, force=True)
         done = bool(task.result and task.result.get('done'))
         if not (expired or exited or done):
             return None
