@@ -1,0 +1,615 @@
+[
+  {
+    "file": "benchmarks/results/matches-hard-diverse-predeclared.json",
+    "raw_summary": {
+      "games": 32,
+      "wins": 18,
+      "losses": 9,
+      "draws": 0,
+      "censored": 5,
+      "errors": 0,
+      "decisive_win_fraction": 0.6666666666666666,
+      "wilson95_decisive": [
+        0.47824760507320074,
+        0.8135673850128435
+      ],
+      "caution": "Wilson treats games independent; color-paired correlated games/openings reduce effective sample size; not a release strength PASS by itself."
+    },
+    "unique_openings": 16,
+    "positive_opening_groups": 7,
+    "negative_opening_groups": 2,
+    "tied_opening_groups": 6,
+    "wilson95_positive_nontied_opening_fraction": [
+      0.45258896910698887,
+      0.9367748928821533
+    ],
+    "groups": [
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            9,
+            9
+          ],
+          [
+            4,
+            7
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            8,
+            10
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            8,
+            7
+          ],
+          [
+            8,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            6,
+            5
+          ],
+          [
+            5,
+            7
+          ],
+          [
+            5,
+            9
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            6
+          ],
+          [
+            7,
+            8
+          ],
+          [
+            8,
+            4
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            4,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            8,
+            6
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            10,
+            4
+          ],
+          [
+            4,
+            10
+          ],
+          [
+            5,
+            10
+          ],
+          [
+            7,
+            10
+          ],
+          [
+            10,
+            5
+          ],
+          [
+            7,
+            5
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            5,
+            5
+          ],
+          [
+            4,
+            6
+          ],
+          [
+            8,
+            9
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            5,
+            9
+          ],
+          [
+            4,
+            8
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            9,
+            7
+          ],
+          [
+            5,
+            10
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            8
+          ],
+          [
+            5,
+            7
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            6,
+            9
+          ],
+          [
+            6,
+            4
+          ],
+          [
+            5,
+            4
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            9
+          ],
+          [
+            4,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "games": 2,
+        "wins": 0,
+        "losses": 0,
+        "draws": 0,
+        "score": null
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            5
+          ],
+          [
+            8,
+            4
+          ],
+          [
+            5,
+            6
+          ],
+          [
+            9,
+            4
+          ],
+          [
+            5,
+            9
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            9,
+            5
+          ],
+          [
+            10,
+            6
+          ],
+          [
+            6,
+            6
+          ],
+          [
+            6,
+            9
+          ],
+          [
+            10,
+            8
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            7,
+            8
+          ]
+        ],
+        "games": 2,
+        "wins": 0,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            8,
+            5
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            10,
+            4
+          ]
+        ],
+        "games": 2,
+        "wins": 0,
+        "losses": 2,
+        "draws": 0,
+        "score": 0.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            10,
+            7
+          ],
+          [
+            8,
+            6
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            8
+          ],
+          [
+            6,
+            9
+          ],
+          [
+            5,
+            8
+          ],
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            9,
+            6
+          ],
+          [
+            9,
+            8
+          ],
+          [
+            6,
+            5
+          ]
+        ],
+        "games": 2,
+        "wins": 2,
+        "losses": 0,
+        "draws": 0,
+        "score": 1.0
+      },
+      {
+        "opening": [
+          [
+            7,
+            7
+          ],
+          [
+            6,
+            7
+          ],
+          [
+            7,
+            9
+          ],
+          [
+            4,
+            5
+          ],
+          [
+            8,
+            5
+          ]
+        ],
+        "games": 2,
+        "wins": 1,
+        "losses": 1,
+        "draws": 0,
+        "score": 0.5
+      }
+    ],
+    "overshoot_over_100ms": [],
+    "caution": "Both confidence intervals are descriptive. Openings are purposively selected, small and correlated; repeats do not create independent samples or universal Elo/strength claims."
+  }
+]

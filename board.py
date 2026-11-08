@@ -1,7 +1,14 @@
 from contextlib import contextmanager
+import time
+
+
+class RuleValidationTimeout(Exception):
+    """A UI validation budget expired; this is NOT an illegal-move verdict."""
+
 
 import numpy as np
 from constants import DEFAULT_BOARD_SIZE, DEFAULT_WIN_LENGTH
+from renju_rules import Rules
 
 # Player representation
 EMPTY = 0
@@ -26,6 +33,13 @@ class Board:
         self.size = size
         self.win_length = win_length
         self.grid = np.zeros((size, size), dtype=int)
+        self._rules = Rules(size, win_length)
+        self.ruleset = self._rules.ruleset
+        self.opening_policy = self._rules.opening_policy
+        self._legality_key = None
+        self._legality_cells = None
+        self._legality_cache = {}
+        self.validation_budget_sec = None
         self.last_move = None  # Store the last move (row, col)
         self.forbidden_checked_pos = None  # Store pos just checked for forbidden
         self.center = (size // 2, size // 2) if size % 2 == 1 else None
@@ -82,6 +96,39 @@ class Board:
                 and self.is_empty(row, col)
                 and self._opening_allows(row, col, move_count)
                 and not self._is_forbidden(row, col, player))
+
+    def accept_adjudication(self, row, col, player, move_count, *, legal,
+                            expected_key, ruleset):
+        """Install a complete detached rule result only for this exact position.
+
+        The process adapter authenticates task kind/token/candidate first. This
+        method additionally checks local geometry and semantic metadata; UNKNOWN
+        never enters the cache. It does not place a stone.
+        """
+        key = (self.size, self.win_length, self.grid.tobytes())
+        if (type(legal) is not bool or type(row) is not int or type(col) is not int
+                or type(player) is not int or type(move_count) is not int or move_count < 0
+                or expected_key != key or ruleset != self._rules.ruleset
+                or player not in (BLACK, WHITE) or not self.is_within_bounds(row, col)
+                or not self.is_empty(row, col) or not self._opening_allows(row, col, move_count)):
+            return False
+        if player != BLACK or self.win_length != 5:
+            return legal  # No recursive foul question for white/custom games.
+        if self._legality_key != key:
+            self._legality_key = key
+            self._legality_cells = self._rules.flatten(self.grid)
+            self._legality_cache = {}
+        self._legality_cache[int(row*self.size+col)] = not legal
+        return True
+
+    def accept_checked_move(self, row, col, player, move_count, *, expected_key,
+                            ruleset, opening_policy):
+        """Narrow legal-only handoff after authenticated detached validation."""
+        if (type(row) is not int or type(col) is not int or type(player) is not int
+                or type(move_count) is not int or opening_policy != self._rules.opening_policy):
+            return False
+        return self.accept_adjudication(row, col, player, move_count, legal=True,
+                                        expected_key=expected_key, ruleset=ruleset)
 
     def place_stone(self, row, col, player, move_count):
         """Place a legal stone; only real attempts update visual feedback."""
@@ -211,26 +258,34 @@ class Board:
             self.forbidden_checked_pos = None
 
     def _is_forbidden(self, r, c, player):
-        """Phase A's contiguous-only Renju approximation, NOT official rules.
+        """Shared verified rule core, independent from all AI evaluations.
 
-        Collect every direction before applying exact-five priority, then
-        reject overlines and the existing simple double-three/double-four.
-        Broken formations and recursive real-three rules belong to Phase B.
+        Public grid writes by legacy callers are detected by an exact byte key;
+        one flattened copy and per-cell results are reused within a position.
         """
         if (player != BLACK or self.win_length != 5
                 or not self.is_within_bounds(r, c) or not self.is_empty(r, c)):
             return False
-        with self.temporary_move(r, c, player):
-            details = [self._count_line_details(r, c, dr, dc, player)
-                       for dr, dc in DIRECTIONS]
-            if any(count == 5 for count, _ in details):
-                return False
-            if any(count > 5 for count, _ in details):
-                return True
-            open_threes = sum(count == 3 and ends == 2
-                              for count, ends in details)
-            fours = sum(count == 4 for count, _ in details)
-            return open_threes >= 2 or fours >= 2
+        key = (self.size, self.win_length, self.grid.tobytes())
+        if key != self._legality_key:
+            if self._rules.size != self.size or self._rules.win_length != self.win_length:
+                self._rules = Rules(self.size, self.win_length)
+                self.ruleset = self._rules.ruleset
+                self.opening_policy = self._rules.opening_policy
+            self._legality_key = key
+            self._legality_cells = self._rules.flatten(self.grid)
+            self._legality_cache = {}
+        cell = int(r * self.size + c)
+        if cell not in self._legality_cache:
+            check = None
+            if self.validation_budget_sec is not None:
+                deadline = time.perf_counter() + self.validation_budget_sec
+                def check():
+                    if time.perf_counter() >= deadline:
+                        raise RuleValidationTimeout('Rule validation incomplete; try another move or use research')
+            self._legality_cache[cell] = not self._rules.is_legal(
+                self._legality_cells, cell, player, check=check, check_opening=False)
+        return self._legality_cache[cell]
 
     def find_threats(self, player):
         """盤面上の脅威を検出します。

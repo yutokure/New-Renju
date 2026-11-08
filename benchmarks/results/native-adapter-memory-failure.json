@@ -1,0 +1,22 @@
+{
+  "child_exit": 77,
+  "result": {
+    "move": null,
+    "error": "Worker ended without a result",
+    "timed_out": false,
+    "resource_limits": {
+      "platform": "win32",
+      "supported": true,
+      "enforced": true,
+      "closed": false,
+      "pid": 31200,
+      "memory_limit_mb": 64,
+      "memory_limit_bytes": 67108864,
+      "diagnostic": "Windows Job Object per-process committed-memory cap active"
+    }
+  },
+  "resources_closed": true,
+  "temporary_directory_removed": true,
+  "no_retired_children": true,
+  "parent_survived": true
+}

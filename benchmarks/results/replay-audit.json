@@ -1,0 +1,34 @@
+[
+  {
+    "file": "benchmarks/results/matches-equal-hard-1_5.json",
+    "games": 24,
+    "legal_placements_replayed": 934,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  },
+  {
+    "file": "benchmarks/results/matches-equal-old-1_5.json",
+    "games": 24,
+    "legal_placements_replayed": 810,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  },
+  {
+    "file": "benchmarks/results/matches-default-hard.json",
+    "games": 16,
+    "legal_placements_replayed": 474,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  },
+  {
+    "file": "benchmarks/results/matches-hard-vs-old-1_5.json",
+    "games": 16,
+    "legal_placements_replayed": 1046,
+    "no_postterminal_moves": true,
+    "independent_winner_geometry_matches": true,
+    "note": "Legality uses shared separately reviewed Rules; terminal geometry is independently coded."
+  }
+]

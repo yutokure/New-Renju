@@ -1,0 +1,74 @@
+[
+  {
+    "difficulty": "easy",
+    "exit_code": 0,
+    "wall_seconds": 0.970517399999153,
+    "result": {
+      "move": [
+        7,
+        7
+      ],
+      "completed_depth": 0,
+      "phase": "complete",
+      "token": "frozen-easy",
+      "done": true,
+      "elapsed": 0.4498844999998255
+    }
+  },
+  {
+    "difficulty": "normal",
+    "exit_code": 0,
+    "wall_seconds": 0.2993795999991562,
+    "result": {
+      "move": [
+        7,
+        7
+      ],
+      "completed_depth": 0,
+      "phase": "complete",
+      "token": "frozen-normal",
+      "done": true,
+      "elapsed": 0.07172069999978703
+    }
+  },
+  {
+    "difficulty": "hard",
+    "exit_code": 0,
+    "wall_seconds": 0.3128980999990745,
+    "result": {
+      "move": [
+        7,
+        7
+      ],
+      "completed_depth": 2,
+      "phase": "complete",
+      "token": "frozen-hard",
+      "done": true,
+      "elapsed": 0.08923540000068897,
+      "depth": 2,
+      "score": 0,
+      "nodes": 4,
+      "evaluations": 3
+    }
+  },
+  {
+    "difficulty": "very_hard",
+    "exit_code": 0,
+    "wall_seconds": 0.311618499999895,
+    "result": {
+      "move": [
+        7,
+        7
+      ],
+      "completed_depth": 0,
+      "phase": "complete",
+      "token": "frozen-very_hard",
+      "done": true,
+      "elapsed": 0.08416600000055041,
+      "nodes": 0,
+      "evaluations": 0,
+      "score": null,
+      "proof_status": "UNKNOWN"
+    }
+  }
+]

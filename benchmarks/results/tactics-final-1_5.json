@@ -1,0 +1,440 @@
+{
+  "kind": "tactical_nominated_roots",
+  "budget": 1.5,
+  "environment": {
+    "source_sha256": {
+      "ai.py": "dd9a3f380be9a634bf7eb7b1115684f90b8c795dc49650e49c58f79a4048434f",
+      "board.py": "3cf60420a9fed476b958c14d95d6b6a5d1e1a6a1266ef84b0aa35524ae284a91",
+      "renju_rules.py": "dd3f09e747c196d1e2b51b57d58253a05610f8839757172c5b140734c5baba61",
+      "tactics.py": "f7e9a52c5c1a8bb221c06eda2fb788751f1ce1c5b736d976538b7c73136859c4",
+      "very_hard.py": "de82c529db6190350b6d1303f6e2c886f7c93f17e70db3330fdb515be5ad016c"
+    },
+    "python": "3.12.3",
+    "numpy": "1.26.3",
+    "platform": "Windows-11-10.0.26300-SP0",
+    "processor": "AMD64 Family 25 Model 116 Stepping 1, AuthenticAMD"
+  },
+  "warning": "Accepted nominated roots are sufficient not exhaustive best-move labels; alternate sound wins can be marked false. Negative solver certificate suite separate.",
+  "rows": [
+    {
+      "engine": "old_hard",
+      "case": "vcf-positive-four-three",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.17959819999941828,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "vcf-positive-white-forbidden-trap",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": false,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.1725734999999986,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "vct-positive-white-cross-all-defenses",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.12807780000002822,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "opening",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.006813699999838718,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "white_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0005276000001686043,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "black_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.006573800000296615,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "old_hard",
+      "case": "forced_block",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0012338000005911454,
+      "completed_depth": null,
+      "proof_status": null,
+      "nodes": null
+    },
+    {
+      "engine": "hard_a",
+      "case": "vcf-positive-four-three",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.1362584999997125,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 115
+    },
+    {
+      "engine": "hard_a",
+      "case": "vcf-positive-white-forbidden-trap",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": false,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.05475350000051549,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 104
+    },
+    {
+      "engine": "hard_a",
+      "case": "vct-positive-white-cross-all-defenses",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.03091630000017176,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 66
+    },
+    {
+      "engine": "hard_a",
+      "case": "opening",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0018659999996089027,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 4
+    },
+    {
+      "engine": "hard_a",
+      "case": "white_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.00085529999978462,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "hard_a",
+      "case": "black_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0009039999995366088,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "hard_a",
+      "case": "forced_block",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.005435799999759183,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "hard",
+      "case": "vcf-positive-four-three",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.09164429999964341,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 115
+    },
+    {
+      "engine": "hard",
+      "case": "vcf-positive-white-forbidden-trap",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": false,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.04999440000028699,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 104
+    },
+    {
+      "engine": "hard",
+      "case": "vct-positive-white-cross-all-defenses",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.026770000000396976,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 66
+    },
+    {
+      "engine": "hard",
+      "case": "opening",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.001800099999854865,
+      "completed_depth": 2,
+      "proof_status": null,
+      "nodes": 4
+    },
+    {
+      "engine": "hard",
+      "case": "white_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0008541999995941296,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "hard",
+      "case": "black_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0008923999994294718,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "hard",
+      "case": "forced_block",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.0020961000000170316,
+      "completed_depth": 0,
+      "proof_status": null,
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "vcf-positive-four-three",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.02191769999990356,
+      "completed_depth": 0,
+      "proof_status": "PROVEN_WIN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "vcf-positive-white-forbidden-trap",
+      "move": [
+        7,
+        6
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.005242400000497582,
+      "completed_depth": 0,
+      "proof_status": "PROVEN_WIN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "vct-positive-white-cross-all-defenses",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.22991080000065267,
+      "completed_depth": 0,
+      "proof_status": "PROVEN_WIN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "opening",
+      "move": [
+        7,
+        7
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.005397000000812113,
+      "completed_depth": 0,
+      "proof_status": "UNKNOWN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "white_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.003965899999457179,
+      "completed_depth": 0,
+      "proof_status": "PROVEN_WIN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "black_win",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.003362800000104471,
+      "completed_depth": 0,
+      "proof_status": "PROVEN_WIN",
+      "nodes": 0
+    },
+    {
+      "engine": "very_hard",
+      "case": "forced_block",
+      "move": [
+        7,
+        8
+      ],
+      "accepted_nominated_move": true,
+      "legal": true,
+      "nonmutating": true,
+      "seconds": 0.004155300000093121,
+      "completed_depth": 0,
+      "proof_status": "UNKNOWN",
+      "nodes": 0
+    }
+  ]
+}

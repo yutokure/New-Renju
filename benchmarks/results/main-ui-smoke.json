@@ -1,0 +1,12 @@
+{
+  "errors": [],
+  "created_games": [
+    {
+      "difficulty": "very_hard",
+      "board_size": 15,
+      "target": 5
+    }
+  ],
+  "driver": "native windows SDL main loop",
+  "closed_cleanly": true
+}

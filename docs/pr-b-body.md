@@ -1,0 +1,34 @@
+## Stacked dependency
+
+**Base: `improvement/hard-stability` / PR #1**. This PR contains Very Hard, formal shared placement rules and integration only on top of the conservative Hard changes. Do not merge main before owner approval. CI is not included or used per owner instruction; all validation is local.
+
+## Implementation
+
+- Independent `AIVeryHard`, no AIHard inheritance/evaluator reuse; configurable default5s
+- Sound-positive bounded VCF/VCT AND/OR strategy certificates, all-board counterwins, full legal VCT placements + pass, `PROVEN_WIN`/`PROVEN_LOSS`/`UNKNOWN`
+- Iterative negamax/alpha-beta, tactical ordering, incremental windows/threats/hash and bounded TT; heuristic beam estimates never advertised as proofs
+- Separated formal Renju placement core: exact black five priority, white>=five, broken/same-axis fours, recursively legal nonwinning real-three witnesses
+- Explicit custom connect3/4/6/7 policy and legacy simplified opening; shared referee, old-save-compatible v2 metadata
+- Four difficulties, detached search/research/forbidden overlay, token rejection, cancellation, time and Windows commit-memory caps
+- Independent rules/search/resource reviews, tactical fixtures, serial paired-color games, raw results, local build spec
+
+## Evidence
+
+- **539 local tests pass** (rules198, tactics57, plus Hard/general/UI/resource/compatibility regressions).
+- Equal1.5s: VH **20W4L vs improved Hard**, **22W2L vs old Hard**; normal5s vs Hard1.5s **16W0L**.
+- Eight unique purposeful openings, paired colors/repeats; confidence intervals and dependence warnings included. Not a universal Elo/strength claim.
+- Nominated tactical roots7/7 VH vs6/7 Hard; three proof-positive positions certified; counterattack negatives remain UNKNOWN.
+- Initial80 games/3264 placements plus a fresh source-hashed16-game equal-budget sample (VH14W2L,614 placements) legally replayed with independent terminal geometry; repeated openings remain dependent samples.
+- Python Windows native UI:60frames, max19.56ms; Esc2.02ms; worker RSS~39MB, commit~28MB after removing unused BLAS pools; controlled memory cap and parent-death tests pass.
+
+## Overall acceptance: CHANGES REQUESTED
+
+This is deliberately **Draft**, not full release PASS:
+
+1. Hard non-regression remains unestablished:5W6L5censored vs old Hard, broad dependent confidence interval; no correctness rollback or overfit tuning. Additional small-board oracle:19/20 full-width2ply best-value matches under TTon/off, with the20th retained as a documented forced-reply/fork-horizon limitation (not20/20 or strengthPASS). The separate predeclared16-opening/32-game follow-up completed18W9L5censored/0errors,2510legally replayed placements, all per-game source hashes equal. Descriptive Wilson47.82–81.36% and dependence/censoring do not establish noninferiority; initial results are retained.
+2. Final frozen build plus4-difficulty worker/real-adapter/single-point-validation/cancellation/cleanup checks pass in an explicitly selected workspace root. Actual packaged GUI with `--worker-directory` also passes Settings→human move→VH response→save→Menu→clean exit/no worker dirs. Default system TEMP access still fails in this host; default-path readiness remains unapproved.
+3. Complex moves exceeding12ms now continue in an isolated exact-candidate5s validator (independent narrow review PASS). Exhaustion remains UNKNOWN/unplayed with explicit R retry; no unlimited latency guarantee.
+4. Sparse composed tactical corpus / limited independent opening diversity; no federation/external strong-engine exhaustive certification.
+5. Non-Windows OS memory cap explicitly unsupported; full tournament opening/clocks/claims/pass protocols out of scope.
+
+See `docs/validation-results.md`, `docs/final-acceptance.md`, design docs, four scoped implementation reviews and the final independent evidence review. The controlled native allocation-failure adapter cleanup check passed; default-path frozen startup remains unapproved. All source-level review PASS labels are bounded and do not override these acceptance gaps.

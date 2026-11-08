@@ -1,0 +1,10 @@
+{
+  "fast_budget_seconds": 0,
+  "move_applied": true,
+  "board_black_center": true,
+  "wall_seconds": 0.4484327000009216,
+  "max_frame_seconds": 0.045863699999245,
+  "frames": 23,
+  "game_over_unchanged": true,
+  "driver": "windows"
+}

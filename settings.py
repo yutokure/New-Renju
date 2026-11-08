@@ -6,6 +6,7 @@ from constants import (
     AI_EASY,
     AI_NORMAL,
     AI_HARD,
+    AI_VERY_HARD,
 )
 
 
@@ -29,7 +30,7 @@ class Settings:
             (PLAYER_AI, PLAYER_HUMAN),     # AI vs Human
             (PLAYER_AI, PLAYER_AI),        # AI vs AI (Maybe less common)
         ]
-        self.ai_difficulty_options = [AI_EASY, AI_NORMAL, AI_HARD]
+        self.ai_difficulty_options = [AI_EASY, AI_NORMAL, AI_HARD, AI_VERY_HARD]
 
     def set_board_size(self, size):
         """Sets the board size if valid."""
@@ -97,6 +98,7 @@ class Settings:
             AI_EASY: "簡単",
             AI_NORMAL: "普通",
             AI_HARD: "難しい",
+            AI_VERY_HARD: "Very Hard",
         }
         summary = [
             f"盤面サイズ: {self.board_size}x{self.board_size}",

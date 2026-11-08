@@ -35,7 +35,7 @@ def wait_result(runner, board, player, count, timeout=6):
     pytest.fail('Worker failed wall-clock guard')
 
 
-@pytest.mark.parametrize('difficulty', ['easy', 'normal', 'hard'])
+@pytest.mark.parametrize('difficulty', ['easy', 'normal', 'hard', 'very_hard'])
 def test_real_worker_legal_nonmutating(difficulty):
     board = Board()
     grid = board.grid.copy()

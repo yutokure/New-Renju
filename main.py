@@ -1,3 +1,20 @@
+# Dispatch isolated workers before initializing/importing the UI stack. This
+# also keeps frozen worker startup failures diagnostic instead of modal dialogs.
+import sys
+if __name__ == '__main__' and len(sys.argv) == 3 and sys.argv[1] == '--ai-worker':
+    try:
+        from ai_worker import run_request
+        run_request(sys.argv[2])
+    except Exception:
+        import traceback
+        from pathlib import Path
+        try:
+            Path(sys.argv[2]).with_name('startup-error.txt').write_text(traceback.format_exc(), encoding='utf-8')
+        except OSError:
+            pass  # Worker must exit, not open a modal frozen traceback dialog.
+        raise SystemExit(1)
+    raise SystemExit(0)
+
 import pygame
 import sys
 import json # Import json module
@@ -16,6 +33,7 @@ from constants import (
     PLAYER_AI,
     PLAYER_HUMAN,
     STATE_LOAD_SELECT, # Import new state
+    AI_LABELS,
 )
 from ui import Button
 from settings import Settings
@@ -46,6 +64,29 @@ def _load_game_data(filename="gomoku_save.json"):
         if isinstance(data["settings"].get("game_mode"), list):
              data["settings"]["game_mode"] = tuple(data["settings"]["game_mode"])
 
+        resolved = data['settings']
+        valid = Settings()
+        if (type(resolved['board_size']) is not int or resolved['board_size'] not in valid.board_size_options
+                or type(resolved['win_length']) is not int or resolved['win_length'] not in valid.win_length_options
+                or resolved['win_length'] > resolved['board_size']
+                or resolved['game_mode'] not in valid.game_mode_options
+                or resolved['ai_difficulty'] not in valid.ai_difficulty_options
+                or type(resolved['ai_starts']) is not bool):
+            print(f"Error: Unsupported settings in '{filename}'.")
+            return None, None
+
+        if data.get('schema_version', 1) not in (1, 2):
+            print(f"Error: Unsupported save version in '{filename}'.")
+            return None, None
+        if 'rules' in data:
+            from renju_rules import Rules
+            expected_rules = Rules(resolved['board_size'], resolved['win_length'])
+            metadata = data['rules']
+            if (not isinstance(metadata, dict) or metadata.get('ruleset') != expected_rules.ruleset
+                    or metadata.get('opening_policy') != expected_rules.opening_policy):
+                print(f"Error: Unsupported rule policy in '{filename}'.")
+                return None, None
+
         # Validate move history format (list of lists/tuples with 2 ints)
         if not isinstance(data["move_history"], list):
              print(f"Error: Invalid move_history format in '{filename}'.")
@@ -56,6 +97,14 @@ def _load_game_data(filename="gomoku_save.json"):
                   print(f"Error: Invalid move format {move} in '{filename}'.")
                   return None, None
 
+        seen = set()
+        for move in data['move_history']:
+            cell = tuple(move)
+            if (any(type(v) is not int or not 0 <= v < resolved['board_size'] for v in move)
+                    or cell in seen):
+                print(f"Error: Out-of-bounds or duplicate history in '{filename}'.")
+                return None, None
+            seen.add(cell)
         print(f"Game data loaded successfully from {filename}")
         return data["settings"], data["move_history"]
 
@@ -81,7 +130,14 @@ def _get_save_files():
         print(f"Error getting save files: {e}")
         return []
 
-def main():
+def main(worker_directory=None):
+    # An explicit portable/managed worker root is optional; default TEMP remains
+    # unchanged and denied paths never trigger silent fallback writes elsewhere.
+    if worker_directory is not None:
+        from pathlib import Path
+        worker_directory = str(Path(worker_directory).resolve(strict=True))
+        if not Path(worker_directory).is_dir():
+            raise ValueError('Worker directory must be an existing directory')
     pygame.init()
 
     settings = Settings()  # Create a Settings instance
@@ -249,7 +305,7 @@ def main():
                 center=game_mode_value_rect.center
             )
             ai_difficulty_str = (
-                settings.ai_difficulty.capitalize() if ai_active else "N/A"
+                AI_LABELS.get(settings.ai_difficulty, settings.ai_difficulty) if ai_active else "N/A"
             )
             ai_difficulty_value_text = settings_value_font.render(
                 ai_difficulty_str, True, GRAY
@@ -279,7 +335,7 @@ def main():
                 for button in menu_buttons:
                     result = button.handle_event(event)
                     if result == "Start New Game":
-                        current_game = Game(screen, settings)
+                        current_game = Game(screen, settings, worker_directory=worker_directory)
                         game_state = STATE_GAME
                         print("Starting New Game:", settings.get_setting_summary())
                     elif result == "Load Game":
@@ -406,7 +462,7 @@ def main():
                                  continue
 
                              # Start game with loaded data
-                             current_game = Game(screen, settings)
+                             current_game = Game(screen, settings, worker_directory=worker_directory)
                              current_game.reset_game(move_history_to_load=loaded_moves)
                              game_state = STATE_GAME
                              print("Loaded Game:", settings.get_setting_summary())
@@ -502,8 +558,8 @@ def main():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == '--ai-worker':
-        from ai_worker import run_request
-        run_request(sys.argv[2])
-    else:
-        main()
+    import argparse
+    parser = argparse.ArgumentParser(description='New-Renju')
+    parser.add_argument('--worker-directory', help='Existing directory for isolated worker temporary files')
+    args = parser.parse_args()
+    main(worker_directory=args.worker_directory)

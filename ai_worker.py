@@ -58,25 +58,76 @@ def run_request(request_path):
         board = Board(data['size'], data['win_length'])
         board.grid = np.array(data['grid'], dtype=int)
         board.last_move = tuple(data['last_move']) if data['last_move'] is not None else None
+        if request['kind'] == 'validate':
+            # A single candidate is adjudicated completely, independently from
+            # evaluation/search and without Board's short UI validation budget.
+            from ai_async import validation_context, _candidate_shape
+            from renju_rules import Rules
+            context = request.get('validation_context')
+            candidate = context.get('candidate') if isinstance(context, dict) else None
+            if not _candidate_shape(candidate):
+                raise ValueError('Invalid validation request candidate')
+            expected = validation_context(board, request['player'], request['move_count'], candidate)
+            if context != expected:
+                raise ValueError('Validation request does not match snapshot')
+            deadline = time.perf_counter() + request['budget']
+            class ValidationInterrupted(Exception):
+                pass
+            def check_validation():
+                if cancel.is_set() or time.perf_counter() >= deadline:
+                    raise ValidationInterrupted()
+            response = {'kind': 'validate', 'candidate': candidate,
+                        'validation_context': expected, 'move': None,
+                        'adjudication': 'unknown', 'validation_complete': False,
+                        'verdict': None, 'phase': 'rule validation incomplete'}
+            try:
+                rules = Rules(board.size, board.win_length)
+                verdict = rules.classify_grid(board.grid, *candidate, request['player'],
+                                              request['move_count'], check_validation)
+                response.update(adjudication='legal' if verdict.legal else 'illegal',
+                                validation_complete=True, phase='rule validation complete',
+                                verdict={'legal': verdict.legal, 'win': verdict.win,
+                                         'reason': verdict.reason})
+            except ValidationInterrupted:
+                pass
+            publish(response, done=True)
+            return
         ai = create_ai(request['difficulty'], request['player'])
         if hasattr(ai, 'time_limit'):
             ai.time_limit = request['budget']
-        if request['kind'] == 'analysis':
-            # One detached board, make/unmake for every candidate. Scores are
-            # static Hard estimates, never a proof and never a VH search score.
+        if request['kind'] in ('analysis', 'legality'):
+            # Both exhaustive forbidden overlays and research run detached.
+            # Recursive rule work receives the same deadline/cancel callback.
+            from renju_rules import Rules
+            rules = Rules(board.size, board.win_length)
+            flat = rules.flatten(board.grid)
             evaluator = AIHard(request['player'], time_limit_sec=request['budget'])
-            scores = []
+            scores, invalid = [], []
+            checked = 0
             deadline = time.perf_counter() + request['budget']
-            for r, c in board.get_empty_cells():
+            class Interrupted(Exception):
+                pass
+            def check():
                 if cancel.is_set() or time.perf_counter() >= deadline:
-                    break
-                if not board.is_valid_move(r, c, request['player'], request['move_count']):
-                    continue
-                with board.temporary_move(r, c, request['player']):
-                    score = evaluator._evaluate_board(board)
-                scores.append([int(r), int(c), float(score)])
-            publish({'scores': scores, 'phase': 'Hard static estimate',
-                     'partial': len(scores) < len(board.get_empty_cells())}, done=True)
+                    raise Interrupted()
+            empty = board.get_empty_cells()
+            try:
+                for r, c in empty:
+                    check()
+                    legal = rules.is_legal(flat, int(r*board.size+c), request['player'], request['move_count'], check)
+                    checked += 1
+                    if not legal:
+                        invalid.append([int(r), int(c)])
+                        continue
+                    if request['kind'] == 'analysis':
+                        with board.temporary_move(r, c, request['player']):
+                            score = evaluator._evaluate_board(board)
+                        scores.append([int(r), int(c), float(score)])
+            except Interrupted:
+                pass
+            publish({'scores': scores, 'invalid_cells': invalid,
+                     'phase': 'Hard static estimate' if request['kind'] == 'analysis' else 'legality overlay',
+                     'legality_complete': checked == len(empty), 'partial': checked < len(empty)}, done=True)
         else:
             # Publish a verified legal move before expensive Easy/Normal or
             # engine initialization work. Keep fallback deterministic/local.
@@ -90,7 +141,7 @@ def run_request(request_path):
                     break
             if cancel.is_set():
                 return
-            if isinstance(ai, AIHard):
+            if isinstance(ai, AIHard) or request['difficulty'] == 'very_hard':
                 move = ai.find_move(board, request['move_count'], cancel_event=cancel,
                                     progress_callback=publish)
             else:
@@ -99,7 +150,10 @@ def run_request(request_path):
                 return
             if move is not None and not board.is_valid_move(*move, request['player'], request['move_count']):
                 raise ValueError('AI returned an illegal move')
-            publish({'move': move, 'phase': 'complete'}, done=True)
+            final = {'move': move, 'phase': 'complete'}
+            if hasattr(ai, 'proof_status'):
+                final['proof_status'] = ai.proof_status
+            publish(final, done=True)
     except Exception:
         publish({'error': traceback.format_exc(), 'phase': 'error'}, done=True)
 

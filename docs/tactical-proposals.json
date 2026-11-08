@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "purpose": "Independent, human-checkable rule and tactical fixture proposals; not a production test-file schema or engine-certified solutions.",
+  "board_size": 15,
+  "coordinate_convention": "[row, col], zero-based; row increases down, col increases right; all omitted cells empty",
+  "scope": {
+    "ruleset": "RIF core Renju placement/win/foul semantics",
+    "opening_enforcement": false,
+    "history_validation": false,
+    "positions_are_composed": true,
+    "legal_alternating_history_supplied": false,
+    "pass_defenses": "Covered analytically when the RIF section 5 pass is supported; no forced draw by two passes occurs because attacker always plays.",
+    "verification": "Hand arguments in rules-research.md; not externally engine-certified. A small independent in-memory geometry exercise checked principal rule labels but was not treated as a rules oracle.",
+    "negative_scope": "Negative cases refute the nominated root or continuation only; they do not assert that no other winning move exists in the entire position."
+  },
+  "sources": [
+    "https://www.renju.net/rifrules/",
+    "https://old.renju.net/study/rules.php",
+    "https://old.renju.net/study/advanced.php",
+    "https://renju.se/rif/proof/Go-Moku.pdf"
+  ],
+  "rule_fixtures": [
+    {
+      "id": "exact-five-beats-overline",
+      "black": [[7,3],[7,4],[7,5],[7,6],[4,7],[5,7],[6,7],[8,7],[9,7]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "win_exact_five",
+      "certificate": "Horizontal maximal run c3..7 is exactly five; vertical maximal run r4..9 is six. RIF 9.2 qualifier gives the simultaneous exact five precedence."
+    },
+    {
+      "id": "black-overline-only",
+      "black": [[7,3],[7,4],[7,5],[7,6],[7,8]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "forbidden_overline",
+      "certificate": "Only horizontal maximal run is six, c3..8; no exact five in another axis."
+    },
+    {
+      "id": "white-overline-wins",
+      "black": [],
+      "white": [[7,3],[7,4],[7,5],[7,6],[7,8]],
+      "mover": "white",
+      "move": [7,7],
+      "expected": "win_overline",
+      "certificate": "White maximal six-stone run wins under RIF 9.1."
+    },
+    {
+      "id": "open-four-one-identity",
+      "black": [[7,5],[7,6],[7,8]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_four_count": 1,
+      "fours": [{"stones": [[7,5],[7,6],[7,7],[7,8]], "completions": [[7,4],[7,9]]}],
+      "certificate": "The two exact-five endpoints belong to the same four-stone identity; do not count as double-four."
+    },
+    {
+      "id": "same-axis-double-four",
+      "black": [[7,3],[7,5],[7,7],[7,9]],
+      "white": [],
+      "mover": "black",
+      "move": [7,6],
+      "expected": "forbidden_double_four",
+      "expected_root_four_count": 2,
+      "fours": [
+        {"stones": [[7,3],[7,5],[7,6],[7,7]], "completions": [[7,4]]},
+        {"stones": [[7,5],[7,6],[7,7],[7,9]], "completions": [[7,8]]}
+      ],
+      "certificate": "Two distinct four-stone sets on the same row contain the new stone. Both fills make exact five, not six."
+    },
+    {
+      "id": "broken-four",
+      "black": [[7,4],[7,5],[7,8]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_four_count": 1,
+      "fours": [{"stones": [[7,4],[7,5],[7,7],[7,8]], "completions": [[7,6]]}],
+      "certificate": "The four contains a gap and is not contiguous; completing its sole gap makes exact five."
+    },
+    {
+      "id": "broken-three",
+      "black": [[7,5],[7,8]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_real_three_count": 1,
+      "threes": [{"stones": [[7,5],[7,7],[7,8]], "legal_extensions": [[7,6]], "straight_four_endpoints_after_extension": [[7,4],[7,9]]}],
+      "certificate": "Filling c6 creates contiguous c5..8 with both exact-five endpoints; contiguous-three-only matching misses the root three."
+    },
+    {
+      "id": "false-three-overline-endpoint",
+      "black": [[7,4],[7,6],[7,8],[6,7],[8,7]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_real_three_count": 1,
+      "real_three_witnesses": [[5,7],[9,7]],
+      "rejected_horizontal_extensions": [
+        {"move": [7,9], "reason": "Contiguous c6..9 has empty endpoint c5, but filling c5 joins c4 to form six; not a straight four."},
+        {"move": [7,5], "reason": "Makes a five immediately on c4..8, excluded from the definition of a three witness."}
+      ],
+      "certificate": "Horizontal formation is a four, not a real three; vertical formation is the only real three."
+    },
+    {
+      "id": "false-double-three-double-four-extensions",
+      "black": [[7,6],[7,8],[6,7],[8,7],[4,5],[5,5],[6,5],[4,9],[5,9],[6,9]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_real_three_count": 1,
+      "legal_vertical_extensions": [[5,7],[9,7]],
+      "rejected_horizontal_extensions": [
+        {"move": [7,5], "reason": "forbidden_double_four", "four_stone_sets": [[[7,5],[7,6],[7,7],[7,8]], [[4,5],[5,5],[6,5],[7,5]]]},
+        {"move": [7,9], "reason": "forbidden_double_four", "four_stone_sets": [[[7,6],[7,7],[7,8],[7,9]], [[4,9],[5,9],[6,9],[7,9]]]}
+      ],
+      "certificate": "Every horizontal straight-four extension is a forbidden double-four, so the horizontal three is false."
+    },
+    {
+      "id": "one-legal-extension-is-enough",
+      "black": [[7,6],[7,8],[6,7],[8,7],[4,5],[5,5],[6,5]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "forbidden_double_three",
+      "expected_root_real_three_count": 2,
+      "horizontal_extension_status": [
+        {"move": [7,5], "status": "forbidden_double_four"},
+        {"move": [7,9], "status": "legal_nonterminal"}
+      ],
+      "legal_vertical_extensions": [[5,7],[9,7]],
+      "certificate": "One legal horizontal witness suffices even though its other extension is forbidden; vertical three also real."
+    },
+    {
+      "id": "false-double-three-recursive-extensions",
+      "black": [[7,6],[7,8],[6,7],[8,7],[6,5],[8,5],[6,4],[8,6],[6,9],[8,9],[6,10],[8,8]],
+      "white": [],
+      "mover": "black",
+      "move": [7,7],
+      "expected": "legal_nonterminal",
+      "expected_root_real_three_count": 1,
+      "legal_vertical_extensions": [[5,7],[9,7]],
+      "rejected_horizontal_extensions": [
+        {
+          "move": [7,5],
+          "reason": "forbidden_double_three",
+          "nested_real_threes": [
+            {"stones": [[6,5],[7,5],[8,5]], "legal_straight_four_witness": [5,5]},
+            {"stones": [[6,4],[7,5],[8,6]], "legal_straight_four_witness": [5,3]}
+          ]
+        },
+        {
+          "move": [7,9],
+          "reason": "forbidden_double_three",
+          "nested_real_threes": [
+            {"stones": [[6,9],[7,9],[8,9]], "legal_straight_four_witness": [5,9]},
+            {"stones": [[6,10],[7,9],[8,8]], "legal_straight_four_witness": [5,11]}
+          ]
+        }
+      ],
+      "certificate": "Each horizontal extension makes one four plus two real threes; recursion rejects both, leaving only the vertical root three. Exercises one nested layer, not arbitrary-depth completeness."
+    }
+  ],
+  "tactical_fixtures": [
+    {
+      "id": "vcf-positive-four-three",
+      "category": "VCF",
+      "black": [[7,4],[7,5],[7,6],[6,7],[8,7]],
+      "white": [[7,3]],
+      "attacker": "black",
+      "root": [7,7],
+      "expected": "nominated_root_forced_win",
+      "proof_status": "analytic_all_defenses_certificate",
+      "defense_partition": [
+        {"defender_move": [7,8], "attacker_continuation": [5,7], "terminal_winning_endpoints": [[4,7],[9,7]], "reason": "Only block of black's immediate horizontal five; continuation is legal vertical straight four."},
+        {"defender_moves": "Every other legal placement, or pass", "attacker_continuation": [7,8], "reason": "Immediate exact-five win. White starts with one stone and cannot win immediately."}
+      ],
+      "terminal_reply_coverage": "After B(5,7), white can occupy at most one of the two endpoints and has at most three total stones after its next move, so no immediate counterwin exists."
+    },
+    {
+      "id": "vcf-negative-defender-immediate-win",
+      "category": "VCF_negative",
+      "black": [[7,4],[7,5],[7,6],[6,7],[8,7]],
+      "white": [[7,3],[2,2],[2,3],[2,4],[2,5]],
+      "attacker": "black",
+      "root": [7,7],
+      "expected": "nominated_root_refuted",
+      "proof_status": "explicit_legal_counterexample",
+      "refuting_defender_move": [2,6],
+      "alternative_refutation": [2,1],
+      "certificate": "White makes its own immediate five instead of blocking the local black four. No claim about other black roots."
+    },
+    {
+      "id": "vcf-negative-forced-block-counterfour",
+      "category": "VCF_negative",
+      "black": [[7,4],[7,5],[7,6],[6,7],[8,7]],
+      "white": [[7,3],[4,8],[5,8],[6,8]],
+      "attacker": "black",
+      "root": [7,7],
+      "expected": "nominated_root_loses_to_counterfour",
+      "proof_status": "explicit_legal_counterexample",
+      "refuting_defender_move": [7,8],
+      "defender_open_four_endpoints": [[3,8],[8,8]],
+      "certificate": "Forced block creates white straight four on col8 r4..7; black has no immediate five and cannot stop both white endpoints."
+    },
+    {
+      "id": "vcf-positive-white-forbidden-trap",
+      "category": "VCF_forbidden_trap",
+      "black": [[7,2],[6,7],[8,7],[6,6],[8,8]],
+      "white": [[7,3],[7,4],[7,5]],
+      "attacker": "white",
+      "root": [7,6],
+      "expected": "nominated_root_forced_win",
+      "proof_status": "analytic_all_defenses_certificate",
+      "sole_white_completion": [7,7],
+      "black_block_status": "forbidden_double_three",
+      "black_block_real_three_witnesses": [
+        {"stones_after_black_block": [[6,7],[7,7],[8,7]], "legal_straight_four_extension": [5,7]},
+        {"stones_after_black_block": [[6,6],[7,7],[8,8]], "legal_straight_four_extension": [5,5]}
+      ],
+      "defense_partition": "Every legal black placement is outside the sole completion; no black immediate five is available. Any such placement or pass leaves W(7,7) winning."
+    },
+    {
+      "id": "vct-positive-white-cross-all-defenses",
+      "category": "VCT",
+      "black": [],
+      "white": [[7,6],[7,8],[6,7],[8,7]],
+      "attacker": "white",
+      "root": [7,7],
+      "expected": "nominated_root_forced_win",
+      "proof_status": "analytic_all_defenses_certificate",
+      "legal_placement_defenses_after_root": 220,
+      "root_four_count": 0,
+      "root_real_three_count": 2,
+      "defense_partition": [
+        {"condition": "defender row == 7", "attacker_continuation": [5,7], "open_four_stones": [[5,7],[6,7],[7,7],[8,7]], "terminal_winning_endpoints": [[4,7],[9,7]], "reason": "Any legal row7 defense is outside this vertical six-cell corridor; its row7 member is already white."},
+        {"condition": "defender row != 7", "attacker_continuation": [7,5], "open_four_stones": [[7,5],[7,6],[7,7],[7,8]], "terminal_winning_endpoints": [[7,4],[7,9]], "reason": "Any off-row defense leaves the horizontal six-cell corridor untouched."},
+        {"condition": "defender passes", "attacker_continuation": [7,5], "terminal_winning_endpoints": [[7,4],[7,9]], "reason": "Pass leaves both corridors untouched."}
+      ],
+      "terminal_reply_coverage": "Black has at most two total stones after its next move, so cannot win or create a four; one placement cannot occupy both chosen endpoints. White wins on the other endpoint."
+    },
+    {
+      "id": "vct-negative-broken-three-remote-block",
+      "category": "VCT_negative",
+      "black": [[7,5],[7,8]],
+      "white": [],
+      "attacker": "black",
+      "root": [7,7],
+      "expected": "nominated_threat_continuation_refuted",
+      "proof_status": "explicit_legal_counterexample",
+      "sole_straight_four_extension_before_defense": [7,6],
+      "refuting_defender_move": [7,9],
+      "all_direct_three_defense_cells": [[7,4],[7,6],[7,9]],
+      "certificate": "Remote endpoint block c9 prevents B(c6) from producing a straight four. Refutes an extension-only defense generator, not all eventual black strategies."
+    },
+    {
+      "id": "vct-negative-counterfour-tempo",
+      "category": "VCT_negative",
+      "black": [[7,6],[7,8],[2,2]],
+      "white": [[2,3],[2,4],[2,5]],
+      "attacker": "black",
+      "root": [7,7],
+      "expected": "nominated_attacker_only_progression_refuted",
+      "proof_status": "explicit_legal_counterexample",
+      "refuting_line": [
+        {"color": "white", "move": [2,6], "reason": "Counterfour with sole five-completion (2,7); (2,2) is black."},
+        {"color": "black", "move": [2,7], "reason": "Required block; black has no immediate five."},
+        {"color": "white", "move": [7,5], "reason": "Removes one potential extension and poisons the left endpoint of the other, so black's straight three cannot now become a straight four in one move."}
+      ],
+      "certificate": "An attacker-only search that ignores nonlocal defender fours cannot certify this root. No global draw/loss claim."
+    }
+  ],
+  "outstanding_review": [
+    "Review hand arguments independently before accepting expected labels as authoritative tests.",
+    "Add deeper recursive false-three positions with independent adjudication.",
+    "Add legal alternating-history fixtures if the harness also tests move counts or opening protocols.",
+    "Choose and version explicit custom connect-3..7 and legacy-save policies; do not call custom variants official Renju."
+  ]
+}
