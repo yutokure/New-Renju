@@ -17,6 +17,11 @@ from board import (
 )
 from ui import Button, Checkbox, Telop, TextPopup # Added TextPopup import
 from ai import create_ai, AIHard
+from ai_async import AsyncAI, position_key
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 # Import Joseki related components (Remove JosekiPopup)
 from joseki import load_joseki, check_joseki # Removed JosekiPopup import
 from collections import defaultdict # Add defaultdict import
@@ -70,10 +75,35 @@ class Game:
         self.placing_animation_start_time = 0
         self.placing_animated_stone_info = None # (r, c, player)
 
+        self.ai_runner = AsyncAI()
+        self.analysis_runner = AsyncAI()
+        self._analysis_key = None
+        self._visual_key = None
+        self._visual_threats = []
+        self._invalid_cells = []
         self.reset_game()
+
+    def close(self):
+        """Dispose workers on menu, quit, or replacement of this game."""
+        self.ai_runner.close()
+        self.analysis_runner.close()
+        self.ai_thinking = False
+        self.evaluation_in_progress = False
+
+    def _cancel_work(self):
+        if getattr(self, 'ai_thinking', False):
+            self.telop.hide()
+        self.ai_runner.cancel()
+        self.analysis_runner.cancel()
+        self.ai_thinking = False
+        self.evaluation_in_progress = False
+        self._analysis_key = None
+        self._visual_key = None
 
     def reset_game(self, move_history_to_load=None):
         """Resets the game state. Can optionally load a move history."""
+        self._cancel_work()
+        self.ai_error = None
         self.board = Board(
             size=self.settings.board_size, win_length=self.settings.win_length
         )
@@ -113,9 +143,8 @@ class Game:
             else:
                  self.current_player = BOARD_BLACK # Default if history was empty or all invalid
 
-        # If not loading history, apply AI start setting
-        elif self.settings.game_mode == (PLAYER_HUMAN, PLAYER_AI) and self.settings.ai_starts:
-            self.current_player = BOARD_WHITE
+        # Black always makes the first stone. Player types, not stone colors,
+        # determine which side is AI (including old ai_starts save metadata).
 
         self.player_types = self.settings.get_player_types()
         self.ai_instances = {BOARD_BLACK: None, BOARD_WHITE: None}
@@ -183,7 +212,7 @@ class Game:
         save_button_spacing = 20
         self.save_button = Button("Save Game", (self.back_button.rect.left - save_button_width_estimate - save_button_spacing, top_button_y), self.font, width=save_button_width_estimate)
         # Research Mode Checkbox (Far Left Top)
-        self.research_mode_checkbox = Checkbox("Research Mode", (20, top_button_y), self.small_font)
+        self.research_mode_checkbox = Checkbox("Research: Hard static", (20, top_button_y), self.small_font)
 
         # Game Over Buttons (Center Screen)
         button_y_gameover = SCREEN_HEIGHT // 2 + 100
@@ -330,22 +359,16 @@ class Game:
         # Determine the player whose turn it *would* be at this history index
         current_player_at_index = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
 
-        # Draw invalid move markers (only if NOT in history mode)
+        # Cached once per position, not once per animation frame.
+        self._refresh_visual_cache()
         if not self.is_history_mode:
-            move_count = len(self.move_history) # Use actual move count for live game
             invalid_surface = pygame.Surface((invalid_marker_size, invalid_marker_size), pygame.SRCALPHA)
             invalid_surface.fill(INVALID_MOVE_COLOR)
-            for r in range(board_to_draw.size):
-                for c in range(board_to_draw.size):
-                    if board_to_draw.grid[r, c] == EMPTY:
-                        # Check validity for the *live* current player
-                        if not self.board.is_valid_move(r, c, self.current_player, move_count):
-                            center_x = self.start_x + c * self.cell_size
-                            center_y = self.start_y + r * self.cell_size
-                            # Don't draw invalid marker if the placing animation is happening there
-                            if not (self.placing_stone_animation and self.placing_animated_stone_info[:2] == (r, c)):
-                                rect = invalid_surface.get_rect(center=(center_x, center_y))
-                                self.screen.blit(invalid_surface, rect)
+            for r, c in self._invalid_cells:
+                center_x = self.start_x + c * self.cell_size
+                center_y = self.start_y + r * self.cell_size
+                rect = invalid_surface.get_rect(center=(center_x, center_y))
+                self.screen.blit(invalid_surface, rect)
 
         # Draw stones (use self.cell_size)
         for r in range(board_to_draw.size):
@@ -528,8 +551,15 @@ class Game:
 
     def handle_event(self, event):
         """Handles events for game screen, including history and save buttons."""
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.close()
+            return STATE_MENU
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+            self._save_game()
+            return None
         # Always handle Menu button
         if self.back_button.handle_event(event) == "Menu":
+            self.close()
             return STATE_MENU
 
         # Handle Game Over buttons if game is over and not in history mode
@@ -538,52 +568,57 @@ class Game:
                 self.reset_game()
                 return None
             if self.menu_button_gameover.handle_event(event) == "Menu":
+                self.close()
                 return STATE_MENU
 
-        # Handle History Navigation and Save Buttons (available always, except AI thinking)
-        if not self.ai_thinking:
-            prev_clicked = self.prev_move_button.handle_event(event) == "< Prev"
-            next_clicked = self.next_move_button.handle_event(event) == "Next >"
-            save_clicked = self.save_button.handle_event(event) == "Save Game"
+        # Navigation remains available during thinking; history cancels work.
+        prev_clicked = self.prev_move_button.handle_event(event) == "< Prev"
+        next_clicked = self.next_move_button.handle_event(event) == "Next >"
+        save_clicked = self.save_button.handle_event(event) == "Save Game"
 
-            if prev_clicked:
-                if self.display_move_index > 0:
-                    self.display_move_index -= 1
-                    self.is_history_mode = True # Enter history mode
-                    self.history_board_cache = None # Invalidate cache
-                    self.needs_redraw = True
-                    print(f"History: Moved to index {self.display_move_index}")
-                return None # Consume event
+        if prev_clicked:
+            self._cancel_work()
+            self.telop.hide()
+            if self.display_move_index > 0:
+                self.display_move_index -= 1
+                self.is_history_mode = True # Enter history mode
+                self.history_board_cache = None # Invalidate cache
+                self.needs_redraw = True
+                print(f"History: Moved to index {self.display_move_index}")
+            return None # Consume event
 
-            if next_clicked:
-                if self.display_move_index < len(self.move_history):
-                    self.display_move_index += 1
-                    self.history_board_cache = None # Invalidate cache
-                    self.needs_redraw = True
-                    print(f"History: Moved to index {self.display_move_index}")
-                    # If we reached the current actual game state, exit history mode
-                    if self.display_move_index == len(self.move_history):
-                         self.is_history_mode = False
-                         print("History: Reached current game state.")
-                return None # Consume event
+        if next_clicked:
+            self._cancel_work()
+            if self.display_move_index < len(self.move_history):
+                self.display_move_index += 1
+                self.history_board_cache = None # Invalidate cache
+                self.needs_redraw = True
+                print(f"History: Moved to index {self.display_move_index}")
+                # If we reached the current actual game state, exit history mode
+                if self.display_move_index == len(self.move_history):
+                     self.is_history_mode = False
+                     print("History: Reached current game state.")
+            return None # Consume event
 
-            if save_clicked:
-                 print("Save button clicked.")
-                 self._save_game() # Call the save function (no filename needed)
-                 return None # Consume event
+        if save_clicked:
+             print("Save button clicked.")
+             self._save_game() # Call the save function (no filename needed)
+             return None # Consume event
 
-        # Handle Research Mode Checkbox click (always available except AI thinking)
-        if not self.ai_thinking:
-            if self.research_mode_checkbox.handle_event(event):
-                 self.research_mode_enabled = self.research_mode_checkbox.checked
-                 print(f"Research Mode Toggled: {'Enabled' if self.research_mode_enabled else 'Disabled'}")
-                 if self.research_mode_enabled:
-                     self.evaluation_cache.clear()
-                     self._evaluate_empty_cells() # Trigger evaluation immediately
-                 else:
-                      self.evaluation_cache.clear()
-                 self.needs_redraw = True
-                 return None # Consume event
+        # Static research is isolated and never blocks input.
+        if self.research_mode_checkbox.handle_event(event):
+             self.research_mode_enabled = self.research_mode_checkbox.checked
+             print(f"Research Mode Toggled: {'Enabled' if self.research_mode_enabled else 'Disabled'}")
+             if self.research_mode_enabled:
+                 self.evaluation_cache.clear()
+                 self._evaluate_empty_cells() # Trigger evaluation immediately
+             else:
+                  self.analysis_runner.cancel()
+                  self.evaluation_in_progress = False
+                  self._analysis_key = None
+                  self.evaluation_cache.clear()
+             self.needs_redraw = True
+             return None # Consume event
 
         # Handle Gameplay Input
         if not self.is_history_mode and not self.ai_thinking and self._is_human_turn() and not self.game_over:
@@ -666,6 +701,12 @@ class Game:
          if self.board.place_stone(row, col, current_player, move_count):
             self.needs_redraw = True
             self.move_history.append((row, col))
+            self._visual_key = None
+            self._analysis_key = None
+            self.analysis_runner.cancel()
+            self.evaluation_in_progress = False
+            self.evaluation_cache.clear()
+            self.display_move_index = len(self.move_history)
             self.invalid_move_pos = None # Clear invalid click feedback
             self.win_line = None
 
@@ -886,47 +927,52 @@ class Game:
             if not popup.update(): # update returns False if duration passed
                 self.text_popups.pop(i)
 
-        # Don't update AI or switch turns if game is over, history mode, OR ANIMATING
-        # (includes both blinking animation and placing animation)
+        self.ai_runner.reap()
+        self.analysis_runner.reap()
+        self._poll_analysis()
         if self.game_over or self.is_history_mode or is_animating or placing_anim_active:
-            # Ensure "Thinking..." message disappears if we enter history/game over/animation
             if self.ai_thinking:
+                self.ai_runner.cancel()
+                self.ai_thinking = False
                 self.telop.hide()
-            self.ai_thinking = False
+            if self.research_mode_enabled:
+                self._evaluate_empty_cells()
             return
 
-        # Handle AI turn (only if not game over, not history, not animating, not telop active)
-        if not self.ai_thinking and not self._is_human_turn() and not telop_is_active:
-            ai = self.ai_instances[self.current_player]
-            if ai:
-                player_name = 'Black' if self.current_player == BOARD_BLACK else 'White'
-                print(f"AI ({player_name}) is thinking...")
-                self.ai_thinking = True
-                self.telop.show("思考中...", None) # Show thinking message indefinitely
-                # --- Force draw thinking telop before AI calculation --- #
-                # print("DEBUG: AI turn, showing 'Thinking...', forcing immediate redraw...") # Comment out
-                self.draw() # Draw screen with telop
-                pygame.display.flip() # Update display
-                # --- End Force draw --- #
-
-                move_count = len(self.move_history)
-                move = ai.find_move(self.board, move_count) # <<< AI Calculation starts HERE
+        if self.ai_thinking:
+            result = self.ai_runner.poll(self.board, self.current_player, len(self.move_history))
+            self.needs_redraw = True
+            if result is not None:
                 self.ai_thinking = False
-                self.telop.hide() # Hide thinking message
-                if move:
-                    print(f"AI chose: {move}")
-                    self._make_move(move[0], move[1])
-                    # Clear eval cache after AI moves
-                    if self.research_mode_enabled:
-                         self.evaluation_cache.clear()
-                         self._evaluate_empty_cells()
+                self.telop.hide()
+                move = result.get('move')
+                if result.get('error'):
+                    logger.error('AI worker: %s', result['error'])
+                if move is not None:
+                    self._make_move(*move)
                 else:
-                    print("AI could not find a valid move.")
-                    if not self.board.get_empty_cells():
-                        self.game_over = True
-                        self.winner = None
-                        print("Game Over! It's a draw because AI cannot move.")
-                        self.telop.hide() # Ensure telop is hidden on draw too
+                    # Do not silently retry a crashed worker forever, or run a
+                    # replacement search on the main thread.
+                    self.ai_error = result.get('error') or 'No legal move returned'
+            return
+
+        if not self._is_human_turn() and not telop_is_active and not self.ai_error:
+            self.analysis_runner.cancel()
+            self.evaluation_in_progress = False
+            self._analysis_key = None
+            try:
+                self.ai_runner.start(self.board, self.current_player, len(self.move_history),
+                                     self.settings.ai_difficulty)
+            except (OSError, ValueError) as exc:
+                self.ai_error = str(exc)
+                logger.exception('Cannot start AI worker')
+                self.needs_redraw = True
+                return
+            self.ai_thinking = True
+            self.telop.show("思考中...", None)
+            self.needs_redraw = True
+        elif self.research_mode_enabled and self._is_human_turn():
+            self._evaluate_empty_cells()
 
     def _get_coords_on_line(self, start_pos, end_pos, direction):
         """Helper function to get all (r, c) coordinates on a threat line."""
@@ -954,15 +1000,24 @@ class Game:
                  c += 1
         return coords
 
+    def _refresh_visual_cache(self):
+        board = self._get_current_board_for_display()
+        count = self.display_move_index if self.is_history_mode else len(self.move_history)
+        player = (BOARD_BLACK if count % 2 == 0 else BOARD_WHITE) if self.is_history_mode else self.current_player
+        key = position_key(board, player, count)
+        if key != self._visual_key:
+            self._visual_key = key
+            self._visual_threats = board.find_threats(BOARD_BLACK) + board.find_threats(BOARD_WHITE)
+            self._invalid_cells = [tuple(map(int, p)) for p in board.get_empty_cells()
+                                   if not board.is_valid_move(*p, player, count)]
+
     def _draw_threat_and_win_lines(self):
         """Draws threat lines and the win line (uses self.cell_size)."""
         board_to_draw = self._get_current_board_for_display()
         current_win_line = self._get_current_win_line_for_display()
 
-        # Calculate threats based on the board being displayed
-        black_threats = board_to_draw.find_threats(BOARD_BLACK)
-        white_threats = board_to_draw.find_threats(BOARD_WHITE)
-        all_threats = black_threats + white_threats
+        self._refresh_visual_cache()
+        all_threats = self._visual_threats
 
         if not all_threats and not current_win_line:
             return
@@ -1026,12 +1081,14 @@ class Game:
             status_text_str = f"History: Move {self.display_move_index} / {len(self.move_history)}"
             current_player_at_index = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
         elif self.ai_thinking:
-             status_text_str = "AI Thinking..."
+             status_text_str = "AI Thinking... {:.1f}s depth {}".format(
+                 self.ai_runner.last_info.get('elapsed', 0.0),
+                 self.ai_runner.last_info.get('completed_depth', 0))
              # Assign current player for indicator color during AI thinking
              current_player_at_index = self.current_player
         else:
             turn_str = "Black" if self.current_player == BOARD_BLACK else "White"
-            status_text_str = f"Turn: {turn_str}"
+            status_text_str = "AI error (Menu to retry)" if self.ai_error else f"Turn: {turn_str}"
             current_player_at_index = self.current_player
 
         status_text = self.font.render(status_text_str, True, TEXT_COLOR)
@@ -1079,73 +1136,44 @@ class Game:
         self.rematch_button.draw(self.screen)
         self.menu_button_gameover.draw(self.screen)
 
-    def _get_ai_for_evaluation(self):
-         """Gets an AIHard instance configured for evaluation (can be cached)."""
-         # Simple caching example, could be more robust
-         if not hasattr(self, '_eval_ai') or self._eval_ai is None:
-              # Use settings or default values for depth/time limit for evaluation
-              # Using a lower depth for responsiveness might be good
-              self._eval_ai = AIHard(self.current_player, depth=2, time_limit_sec=0.1)
-         # Ensure AI player matches current player context if needed for eval
-         # self._eval_ai.player = self.current_player # Might not be needed if eval is generic
-         return self._eval_ai
-
     def _evaluate_empty_cells(self):
-        """Calculates evaluation scores using AI's static board evaluation."""
-        if self.evaluation_in_progress:
+        """Queue one detached static analysis per displayed position."""
+        if not self.research_mode_enabled or self.ai_thinking or (not self.is_history_mode and not self._is_human_turn()):
             return
-        self.evaluation_in_progress = True
-        print("Evaluating empty cells using static evaluation...") # Debug
+        board = self._get_current_board_for_display()
+        count = self.display_move_index if self.is_history_mode else len(self.move_history)
+        player = BOARD_BLACK if count % 2 == 0 else BOARD_WHITE
+        key = position_key(board, player, count)
+        if self._analysis_key == key:
+            return
+        try:
+            self.analysis_runner.start(board, player, count, 'hard', budget=1.5, kind='analysis')
+        except (OSError, ValueError):
+            logger.exception('Cannot start research worker')
+            self._analysis_key = key  # Do not retry this failed position every frame.
+            self.evaluation_in_progress = False
+            self.needs_redraw = True
+            return
+        self._analysis_key = key
         self.evaluation_cache.clear()
-        board_to_eval = self._get_current_board_for_display()
-        # Evaluate from the perspective of the player whose turn it is *at this display index*
-        player_to_eval = BOARD_BLACK if self.display_move_index % 2 == 0 else BOARD_WHITE
-        move_count_at_index = self.display_move_index
-
-        eval_ai = self._get_ai_for_evaluation()
-        eval_ai.player = player_to_eval # Set AI context for evaluation perspective
-
-        empty_cells = board_to_eval.get_empty_cells()
-
-        for r, c in empty_cells:
-            # Basic validity check (empty cell) - forbidden check is complex, rely on AI eval
-            if not board_to_eval.is_within_bounds(r,c) or not board_to_eval.is_empty(r,c):
-                self.evaluation_cache[(r, c)] = None
-                continue
-
-            # Simulate move and call evaluate_board
-            temp_board_copy = board_to_eval.copy()
-            temp_board_copy.grid[r, c] = player_to_eval
-            temp_board_copy.last_move = (r, c)
-
-            # Check if the move is forbidden for Black *before* evaluating
-            is_forbidden = False
-            if player_to_eval == BOARD_BLACK:
-                 # Use the board's method to check forbidden status after placing the stone
-                 is_forbidden = temp_board_copy._is_forbidden(r, c, player_to_eval)
-                 # Note: _is_forbidden temporarily places/removes stone, so our copy is fine
-                 # We need to re-place it for the evaluation function if it wasn't forbidden
-                 if not is_forbidden:
-                      temp_board_copy.grid[r, c] = player_to_eval # Ensure stone is placed for eval
-                 else:
-                      self.evaluation_cache[(r, c)] = None # Mark forbidden as None/Invalid
-                      # print(f"DEBUG: Skipping evaluation for forbidden move at ({r},{c})")
-                      continue # Skip evaluation for forbidden moves
-
-            try:
-                # Call static evaluation for the board state *after* the move
-                # The score is relative to the 'eval_ai.player' (which is player_to_eval)
-                # Remove extra arguments player_to_eval and move_count_at_index + 1
-                score = eval_ai._evaluate_board(temp_board_copy)
-                self.evaluation_cache[(r, c)] = score
-                # print(f"DEBUG: Evaluated ({r},{c}) score: {score}") # Debug
-            except Exception as e:
-                 print(f"Error evaluating ({r},{c}): {e}")
-                 self.evaluation_cache[(r, c)] = "Err"
-
-        print(f"Evaluation complete. Cached {len(self.evaluation_cache)} scores.")
-        self.evaluation_in_progress = False
+        self.evaluation_in_progress = True
         self.needs_redraw = True
+
+    def _poll_analysis(self):
+        if not self.analysis_runner.busy:
+            return
+        board = self._get_current_board_for_display()
+        count = self.display_move_index if self.is_history_mode else len(self.move_history)
+        player = BOARD_BLACK if count % 2 == 0 else BOARD_WHITE
+        result = self.analysis_runner.poll(board, player, count)
+        if result is not None:
+            self.evaluation_cache = {(r, c): score for r, c, score in result.get('scores', [])
+                                     if board.is_within_bounds(r, c) and board.is_empty(r, c)}
+            self.evaluation_in_progress = False
+            self.needs_redraw = True
+        elif not self.analysis_runner.busy:
+            self.evaluation_in_progress = False
+            self._analysis_key = None
 
     def _add_text_popup(self, text, pos_on_board, color, duration=1000):
         """Creates and adds a TextPopup instance near the board position."""

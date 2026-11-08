@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+
 import numpy as np
 from constants import DEFAULT_BOARD_SIZE, DEFAULT_WIN_LENGTH
 
@@ -37,110 +39,90 @@ class Board:
         # Assumes coordinates are within bounds for internal checks
         return self.grid[row, col] == EMPTY
 
-    def is_valid_move(self, row, col, player, move_count):
-        """Checks if a move is valid (bounds, empty, Renju rules)."""
-        # print(f"DEBUG [Board]: is_valid_move checking ({row}, {col}) for player {player}, move_count {move_count}") # DEBUG
+    @contextmanager
+    def temporary_move(self, row, col, player):
+        """Temporarily place a stone, restoring *all* transient state on exit.
 
-        # 1. Check bounds
+        This is a hypothetical placement, not a legality check. Occupied cells
+        are supported for analysis and restored to their previous value.
+        Nested scopes and exceptions are safe; no move count lives on Board.
+        """
         if not self.is_within_bounds(row, col):
-            # print(f"DEBUG [Board]: Invalid - Out of bounds.") # DEBUG
-            return False
+            raise IndexError("Temporary move is outside the board")
+        old_cell = self.grid[row, col]
+        old_last = self.last_move
+        old_forbidden = self.forbidden_checked_pos
+        try:
+            self.grid[row, col] = player
+            self.last_move = (row, col)
+            yield self
+        finally:
+            self.grid[row, col] = old_cell
+            self.last_move = old_last
+            self.forbidden_checked_pos = old_forbidden
 
-        # 2. Check if cell is empty
-        if not self.is_empty(row, col):
-            # print(f"DEBUG [Board]: Invalid - Cell not empty.") # DEBUG
-            return False
-
-        # 3. Check Renju Opening Rules (Shukei)
-        # print(f"DEBUG [Board]: Checking Shukei rules... Center: {self.center}, Size: {self.size}") # DEBUG
-        if self.center is not None and self.size >= 5:
-            center_r, center_c = self.center
-            if move_count == 0:  # Black's 1st move
-                # print("DEBUG [Board]: Checking Move 0 (Black 1st)") # DEBUG
-                if (row, col) != self.center:
-                    # print("DEBUG [Board]: Invalid - Move 0 must be center.") # DEBUG
-                    return False
-            elif move_count == 1:  # White's 1st move (2nd overall) - Specific Shukei positions
-                # print("DEBUG [Board]: Checking Move 1 (White 1st) - Shukei") # DEBUG
-                allowed_pos1 = (center_r - 1, center_c) # Directly above center
-                allowed_pos2 = (center_r - 1, center_c + 1) # Diagonally up-right from center
-                if (row, col) not in [allowed_pos1, allowed_pos2]:
-                    print(f"DEBUG [Board]: Invalid - Move 1 must be {allowed_pos1} or {allowed_pos2}. Got ({row},{col})") # DEBUG
-                    return False
-            elif move_count == 2:  # Black's 2nd move (3rd overall)
-                # print("DEBUG [Board]: Checking Move 2 (Black 2nd)") # DEBUG
-                is_within_2 = abs(row - center_r) <= 2 and abs(col - center_c) <= 2
-                if not is_within_2:
-                    # print("DEBUG [Board]: Invalid - Move 2 must be within 2 steps of center.") # DEBUG
-                    return False
-                # Implicitly handled by is_empty: cannot be center or where White placed move 1
-            # else:
-                # print(f"DEBUG [Board]: Move Count {move_count} >= 3, Shukei rules do not restrict.") # DEBUG
-        # else:
-             # print(f"DEBUG [Board]: Shukei rules not applicable (Center: {self.center}, Size: {self.size})") # DEBUG
-
-        # 4. Check Forbidden Moves (only for Black)
-        if player == BLACK:
-            # print(f"DEBUG [Board]: Checking forbidden moves for Black at ({row},{col})...") # DEBUG
-            is_forbidden = self._is_forbidden(row, col, player)
-            # print(f"DEBUG [Board]: Is forbidden? {is_forbidden}") # DEBUG
-            if is_forbidden:
-                # print(f"DEBUG [Board]: Invalid - Forbidden move for Black.") # DEBUG
-                self.forbidden_checked_pos = (row, col) # Mark for visual feedback
-                return False
-        # else:
-            # print(f"DEBUG [Board]: Not Black, skipping forbidden check.") # DEBUG
-
-        # If all checks pass
-        # print(f"DEBUG [Board]: Move ({row}, {col}) is VALID.") # DEBUG
-        self.forbidden_checked_pos = None # Clear marker if move is valid
+    def _opening_allows(self, row, col, move_count):
+        """Keep the project's simplified opening, also in custom Gomoku."""
+        if self.center is None or self.size < 5:
+            return True
+        center_r, center_c = self.center
+        if move_count == 0:
+            return (row, col) == self.center
+        if move_count == 1:
+            return (row, col) in ((center_r - 1, center_c),
+                                  (center_r - 1, center_c + 1))
+        if move_count == 2:
+            return abs(row - center_r) <= 2 and abs(col - center_c) <= 2
         return True
 
+    def is_valid_move(self, row, col, player, move_count):
+        """Nonmutating legality query; forbidden rules apply only to five."""
+        return (player in (BLACK, WHITE)
+                and self.is_within_bounds(row, col)
+                and self.is_empty(row, col)
+                and self._opening_allows(row, col, move_count)
+                and not self._is_forbidden(row, col, player))
+
     def place_stone(self, row, col, player, move_count):
-        """Places a stone on the board if the move is valid."""
+        """Place a legal stone; only real attempts update visual feedback."""
         if self.is_valid_move(row, col, player, move_count):
             self.grid[row, col] = player
             self.last_move = (row, col)
+            self.forbidden_checked_pos = None
             return True
+        if (player == BLACK and self.is_within_bounds(row, col)
+                and self.is_empty(row, col)
+                and self._opening_allows(row, col, move_count)
+                and self.is_forbidden(row, col)):
+            self.forbidden_checked_pos = (row, col)
         return False
 
     def check_win(self, player):
-        """Checks if the player has won. Returns (bool, win_info tuple) or (False, None)."""
+        """Check lines through last_move; black five must be exact.
+
+        An exact black five has priority across *all* directions, including
+        when the same move makes an overline elsewhere. White and custom
+        (win_length != 5) Gomoku both win with at least win_length stones.
+        """
         if self.last_move is None:
             return False, None
         r, c = self.last_move
-        if self.grid[r, c] != player:
+        if not self.is_within_bounds(r, c) or self.grid[r, c] != player:
             return False, None
-
         for dr, dc in DIRECTIONS:
-            count = 1  # Start with the stone at (r, c)
-            line_coords = [(r, c)] # Store coordinates of stones in the line
-
-            # Count in the positive direction (dr, dc)
-            cr, cc = r + dr, c + dc
-            while self.is_within_bounds(cr, cc) and self.grid[cr, cc] == player:
-                count += 1
-                line_coords.append((cr, cc))
-                cr += dr
-                cc += dc
-
-            # Count in the negative direction (-dr, -dc)
-            cr, cc = r - dr, c - dc
-            while self.is_within_bounds(cr, cc) and self.grid[cr, cc] == player:
-                count += 1
-                line_coords.append((cr, cc))
-                cr -= dr
-                cc -= dc
-
-            # Standard Gomoku win condition: >= win_length stones
-            if count >= self.win_length: # Modified condition to >= for standard Gomoku
-                # Sort coordinates to find start and end points correctly
-                line_coords.sort() # Sorting might mix up directions if needed later, but ok for start/end
-                start_pos = line_coords[0]
-                end_pos = line_coords[-1]
-                win_info = (start_pos, end_pos, (dr, dc))
-                return True, win_info
-
+            count = self._count_line_length(r, c, dr, dc, player)
+            wins = (count == 5 if player == BLACK and self.win_length == 5
+                    else count >= self.win_length)
+            if wins:
+                start_r, start_c = r, c
+                while (self.is_within_bounds(start_r - dr, start_c - dc)
+                       and self.grid[start_r - dr, start_c - dc] == player):
+                    start_r -= dr
+                    start_c -= dc
+                end = (start_r + (count - 1) * dr,
+                       start_c + (count - 1) * dc)
+                start, end = sorted(((start_r, start_c), end))
+                return True, (start, end, (dr, dc))
         return False, None
 
     def _count_line_length(self, r, c, dr, dc, player):
@@ -188,48 +170,12 @@ class Board:
         return count, open_ends
 
     def is_forbidden(self, r, c):
-        """Checks if placing a BLACK stone at (r, c) is a forbidden move."""
-        # Rule: Forbidden moves only apply to Black.
-        # They are: Three-Three, Four-Four, and Overline (> win_length).
-        # Assumes the check is for an empty cell within bounds.
+        """Nonmutating black forbidden query; occupied/outside cells are safe.
 
-        # Temporarily place the stone to check the resulting patterns
-        self.grid[r, c] = BLACK
-        forbidden = False
-        open_threes = 0
-        fours = 0  # Counts lines that form a four
-
-        for dr, dc in DIRECTIONS:
-            # 1. Check Overline
-            line_len = self._count_line_length(r, c, dr, dc, BLACK)
-            if line_len > self.win_length:
-                forbidden = True
-                break  # Overline is definitively forbidden
-
-            # 2. Check Threes and Fours for 3-3 / 4-4 rules
-            count, open_ends = self._count_line_details(r, c, dr, dc, BLACK)
-
-            # Check for Open Three
-            if count == 3 and open_ends == 2:
-                open_threes += 1
-
-            # Check for Four (includes closed fours for 4-4 rule)
-            if count == 4:
-                fours += 1
-
-        # Revert the temporary placement *before* returning the result
-        self.grid[r, c] = EMPTY
-
-        if forbidden:  # Overline check result
-            return True
-
-        # Check for Three-Three or Four-Four
-        if open_threes >= 2 or fours >= 2:
-            return True
-
-        # TODO: Add more robust check for complex 4-4 scenarios if needed.
-
-        return False
+        An occupied cell is not a candidate move, so this returns False rather
+        than overwriting it. Use is_valid_move for complete move legality.
+        """
+        return self._is_forbidden(r, c, BLACK)
 
     def get_empty_cells(self):
         """Returns a list of (row, col) tuples for all empty cells."""
@@ -265,84 +211,26 @@ class Board:
             self.forbidden_checked_pos = None
 
     def _is_forbidden(self, r, c, player):
+        """Phase A's contiguous-only Renju approximation, NOT official rules.
+
+        Collect every direction before applying exact-five priority, then
+        reject overlines and the existing simple double-three/double-four.
+        Broken formations and recursive real-three rules belong to Phase B.
         """
-        Checks if placing a stone at (r, c) for the player results
-        in a forbidden move (specifically for Black in standard Gomoku).
-        Forbidden moves:
-        1. Double Three (三三): Creates two simultaneous open threes.
-        2. Double Four (四四): Creates two simultaneous fours (any type).
-        3. Overline (長連): Creates a line of 6 or more stones.
-        Assumes (r, c) is within bounds and currently empty.
-        """
-        if player != BLACK:
-            return False # Only Black has forbidden moves
-
-        # Temporarily place the stone to check patterns
-        self.grid[r, c] = player
-
-        overline_created = False
-        open_threes = 0 # For 3-3 check
-        fours = 0       # For 4-4 check
-
-        # Check all 4 directions
-        for dr, dc in DIRECTIONS:
-            # --- 1. Check Overline --- Checks the entire line through (r, c)
-            count = 1 # Start with the placed stone
-            line_coords = [(r,c)]
-            # Count positive direction
-            for i in range(1, self.size):
-                nr, nc = r + i * dr, c + i * dc
-                if self.is_within_bounds(nr, nc) and self.grid[nr, nc] == player:
-                    count += 1
-                    line_coords.append((nr, nc))
-                else:
-                    break
-            # Count negative direction
-            for i in range(1, self.size):
-                nr, nc = r - i * dr, c - i * dc
-                if self.is_within_bounds(nr, nc) and self.grid[nr, nc] == player:
-                    count += 1
-                    line_coords.append((nr, nc))
-                else:
-                    break
-
-            if count > self.win_length:
-                overline_created = True
-                break # Overline found, immediately forbidden
-
-            # --- 2. Check if it creates exactly win_length (Winning move) --- #
-            if count == self.win_length:
-                self.grid[r, c] = EMPTY
-                return False # Not forbidden because it's a winning move
-
-            # --- 3. Count Threes and Fours for 3-3 / 4-4 checks --- #
-            # Use _count_line_details for accurate counting including ends
-            count_details, open_ends = self._count_line_details(r, c, dr, dc, player)
-
-            # Check for Open Three (exactly 3 stones, both ends open)
-            if count_details == 3 and open_ends == 2:
-                open_threes += 1
-
-            # Check for Four (exactly 4 stones, regardless of ends)
-            if count_details == 4:
-                fours += 1
-
-        # Revert the temporary placement before returning the result
-        self.grid[r, c] = EMPTY
-
-        # Check forbidden conditions based on collected counts
-        if overline_created:
-            # print(f"DEBUG [Board]: Forbidden - Overline created.")
-            return True
-        if open_threes >= 2:
-            # print(f"DEBUG [Board]: Forbidden - Double Three created ({open_threes} open threes)")
-            return True
-        if fours >= 2:
-            # print(f"DEBUG [Board]: Forbidden - Double Four created ({fours} fours)")
-            return True
-
-        # If none of the above conditions met
-        return False
+        if (player != BLACK or self.win_length != 5
+                or not self.is_within_bounds(r, c) or not self.is_empty(r, c)):
+            return False
+        with self.temporary_move(r, c, player):
+            details = [self._count_line_details(r, c, dr, dc, player)
+                       for dr, dc in DIRECTIONS]
+            if any(count == 5 for count, _ in details):
+                return False
+            if any(count > 5 for count, _ in details):
+                return True
+            open_threes = sum(count == 3 and ends == 2
+                              for count, ends in details)
+            fours = sum(count == 4 for count, _ in details)
+            return open_threes >= 2 or fours >= 2
 
     def find_threats(self, player):
         """盤面上の脅威を検出します。
@@ -479,7 +367,7 @@ class Board:
         new_board = Board(self.size, self.win_length)
         new_board.grid = np.copy(self.grid)
         new_board.last_move = self.last_move
-        # forbidden_checked_pos is transient, probably don't need to copy
+        new_board.forbidden_checked_pos = self.forbidden_checked_pos
         return new_board
 
 
