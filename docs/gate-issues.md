@@ -11,9 +11,11 @@
 | [#18](https://github.com/yutokure/New-Renju/issues/18) | A | G02 | 再戦候補の資源例外と部分reset | PR #20で解決・CLOSED |
 | [#19](https://github.com/yutokure/New-Renju/issues/19) | A | G02 | 取消・期限切れワーカーの強制停止fallback | PR #20で解決・CLOSED |
 | [#21](https://github.com/yutokure/New-Renju/issues/21) | A | G04 | 補助脅威・Popup・部分overlayの表示意味 | PR #24で解決・CLOSED |
-| [#5](https://github.com/yutokure/New-Renju/issues/5) | B | G05 | Windows凍結ワーカーの既定通信領域 | 2修正サイクル後も既定LocalAppDataでWinError5。OPEN・正式公開停止 |
-| [#25](https://github.com/yutokure/New-Renju/issues/25) | A/B | G05 | 実配布物の第三者ライセンス／フォント原文 | 収集済みだがFreeSans等のcoverage最終確認未完。OPEN |
-| [#26](https://github.com/yutokure/New-Renju/issues/26) | A/B | G05 | 回収例外で後続タスク処理／所有権が中断 | 修正・故障注入合格、draft PR／既定実exe最終検証待ち。OPEN |
+| [#5](https://github.com/yutokure/New-Renju/issues/5) | B | G05 | Windows凍結ワーカーの既定通信領域 | オーナー採用PORTABLEでexe隣既定・noargs非管理者7行matrix/展開ZIP PASS。PR #27で解決 |
+| [#25](https://github.com/yutokure/New-Renju/issues/25) | A/B | G05 | 実配布物の第三者ライセンス／フォント原文 | FreeSans除外＋DejaVu原文hash確認、69notices/source同梱の展開ZIP照合。PR #27で解決 |
+| [#26](https://github.com/yutokure/New-Renju/issues/26) | A/B | G05 | 回収例外で後続タスク処理／所有権が中断 | 故障注入とnative異常子終了/終了回収PASS。PR #27で解決 |
+| [#28](https://github.com/yutokure/New-Renju/issues/28) | A/B | G05 | 再ビルド前のportableデータ保護 | builder/spec事前guard・後段guard、既存bytes不変を検証。PR #27で解決 |
+| [#29](https://github.com/yutokure/New-Renju/issues/29) | A | G05 | 長い棋譜名とロード通知の画面重複 | 文字surfaceをhit枠内へ・7行page、実exe画像とinvalid load拒否を確認。PR #27で解決 |
 | [#23](https://github.com/yutokure/New-Renju/issues/23) | A | G04 | 状態・ルール説明・初回操作・視認性 | PR #24で解決・CLOSED |
 | [#13](https://github.com/yutokure/New-Renju/issues/13) | A | G04 | 研究値の意味・表示 | 既存表示を確認・補完、PR #24で解決・CLOSED |
 | [#9](https://github.com/yutokure/New-Renju/issues/9) | C | G04 | 深い禁手再帰のUNKNOWNと手動再試行 | UNKNOWNを誤判定へ変換せず、制限と操作を説明 |

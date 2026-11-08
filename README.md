@@ -4,7 +4,7 @@ Windows 向けの、手軽に対局・振り返りができる五目並べゲー
 
 **表示バージョン:** 2.0 ／ **内部バージョン:** 2.0.0 ／ **リリースタグ:** `v2.0.0`
 
-> **PORTABLE 仕様を正式採用・G05再検証中／未公開:** この文書は Gomoku 2.0 の配布準備用です。凍結配布版は exe と同じフォルダへ棋譜を保存し、その配下でワーカーを動かす PORTABLE 仕様を既定として正式採用しました。仕様の採用は、実 exe・展開 ZIP の最終検証合格や公開完了を意味しません。この仕様で引数なしの通常起動を再検証中で、結果が揃ってから公開案内を確定します。変更点と検証の区分は [2.0 リリースノート](<docs/RELEASE_NOTES_2.0.md>) を参照してください。
+> **PORTABLE 仕様を正式採用・配布候補の受入検証済み:** Windows 11 x64（build 26300）の非管理者・引数なし起動と、日本語・空白を含む場所に展開した ZIP で、記録にある対局・保存・読み込み・終了を確認しました。これは全 Windows 環境の保証や公開完了の宣言ではありません。確認範囲は [G05 PORTABLE 受入記録](<docs/G05_PORTABLE_ACCEPTANCE.md>)、変更点は [2.0 リリースノート](<docs/RELEASE_NOTES_2.0.md>)、**公開状態・最終 SHA-256 は [公式 Release](https://github.com/yutokure/New-Renju/releases) を参照**してください。
 
 ## 主な機能
 
@@ -20,7 +20,7 @@ UI は **英語**です。本書は日本語で操作を説明します。日本
 
 ## 画面例
 
-以下は G04 の Windows ソース版で記録した画面例です。最終配布版の外観・動作を検証済みとする画像ではありません。
+以下は G04 の Windows ソース版で記録した画面例です。最終配布版の外観・動作を検証済みとする画像ではありません。配布版は許諾を確認した UiSans（DejaVu 系）を使用するため、文字の形・幅が画面例と少し異なります。
 
 ![対局画面：状態、ルール、研究チェック、履歴ボタン](<benchmarks/results/g04-game.png>)
 
@@ -30,7 +30,7 @@ UI は **英語**です。本書は日本語で操作を説明します。日本
 
 ### Windows 配布版
 
-- **Windows 10 / 11、x64（64 bit）** が正式な配布対象です。
+- **Windows 10 / 11、x64（64 bit）** が正式な配布対象です。G05 の実機受入環境は Windows 11 x64（build 26300）で、Windows 10 の実機検証済みを意味しません。
 - ZIP を展開して使う **onedir 型のスタンドアロン版**です。Python や Pygame の別途インストールは不要です。
 - 800×600 の固定サイズのウィンドウを表示できる画面と、マウス・キーボードを使用します。ウィンドウのリサイズには対応しません。
 - AI の応答時間は PC の性能・負荷・局面で変わります。全局面での即時応答は保証しません。
@@ -49,7 +49,7 @@ python main.py
 
 ## ダウンロードとインストール不要の起動
 
-公開後の配布先は [公式リポジトリの Releases](https://github.com/yutokure/New-Renju/releases) です。2.0 の公開単位はタグ `v2.0.0`、配布 ZIP 名は `Gomoku-2.0-Windows-x64.zip` です。公開前は該当リリースやアセットが存在しない場合があります。
+配布物の公開状態・最終 SHA-256 は [公式 Release](https://github.com/yutokure/New-Renju/releases) で確認してください。2.0 の公開単位はタグ `v2.0.0`、配布 ZIP 名は `Gomoku-2.0-Windows-x64.zip` です。この README 自体は公開完了を示すものではありません。
 
 1. 公式リポジトリ、タグ、バージョン、ファイル名を確認して ZIP をダウンロードします。
 2. 公開元が示す SHA-256 チェックサムがある場合は照合します。不一致や出所不明のファイルは実行しないでください。
@@ -88,7 +88,7 @@ python main.py
 
 ## 保存先と互換性
 
-G05 では **PORTABLE を既定仕様として正式採用**しました（実 exe・展開 ZIP はこの仕様で再検証中）。凍結配布版の基準は **`sys.executable` が指す exe の親フォルダ**です。起動時のカレントディレクトリやショートカットの作業フォルダではありません。
+G05 では **PORTABLE を既定仕様として正式採用**し、実 exe・展開 ZIP で配布候補の受入を確認しました（[検証範囲](<docs/G05_PORTABLE_ACCEPTANCE.md>)）。凍結配布版の基準は **`sys.executable` が指す exe の親フォルダ**です。起動時のカレントディレクトリやショートカットの作業フォルダではありません。
 
 | 用途 | 場所 |
 |---|---|
@@ -115,7 +115,7 @@ G05 では **PORTABLE を既定仕様として正式採用**しました（実 e
 - 深い禁手再帰は判定時間を超えることがあり、UNKNOWN のまま残します。有限のテストやレビューを、全局面の完全性・RIF 公式認証とは呼びません。
 - Hard の候補絞り込み、Very Hard の固定戦術予算・静かな候補の幅制限・長連窓評価、独立した棋力証拠の不足は残っています。
 - 履歴は閲覧用です。過去の局面から分岐して打つ機能や、対局中の棋譜を改変する機能ではありません。
-- 保存先の空き容量・権限が不足する場合や、必要なハードリンク操作に非対応のファイルシステムでは、保存は安全に失敗します。
+- 保存先の空き容量・権限が不足する場合や、必要なハードリンク操作に非対応のファイルシステムでは、保存は安全に失敗します。保存の権限エラーはソース故障注入で確認しており、実機の読み取り専用保存先を認定した結果ではありません。実機のワーカー領域遮断とは別の検証です（[受入記録](<docs/G05_PORTABLE_ACCEPTANCE.md>)）。
 - 非 Windows の正式配布・OS メモリ強制上限は保証しません。
 
 既知課題 [#3](https://github.com/yutokure/New-Renju/issues/3)、[#4](https://github.com/yutokure/New-Renju/issues/4)、[#6](https://github.com/yutokure/New-Renju/issues/6)、[#7](https://github.com/yutokure/New-Renju/issues/7)、[#8](https://github.com/yutokure/New-Renju/issues/8)、[#9](https://github.com/yutokure/New-Renju/issues/9)、[#10](https://github.com/yutokure/New-Renju/issues/10)、[#12](https://github.com/yutokure/New-Renju/issues/12) は解決済み扱いにしません。詳細は [ゲート別課題台帳](<docs/gate-issues.md>) と [ユーザーマニュアル](<docs/USER_MANUAL.md#limitations>) を参照してください。
