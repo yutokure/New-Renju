@@ -78,6 +78,7 @@ class Button:
         if event.type == pygame.MOUSEMOTION:
             self.is_hovering = self.rect.collidepoint(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.is_hovering = self.rect.collidepoint(event.pos)
             if self.is_hovering and event.button == 1:
                 # If data attribute exists and is not None, return it
                 if hasattr(self, 'data') and self.data is not None:

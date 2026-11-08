@@ -219,6 +219,7 @@ def main(worker_directory=None):
     running = True
     load_task = None
     load_notice = ''
+    menu_notice = ''
     while running:
         ai_active = PLAYER_AI in settings.game_mode
         settings_value_renders = {} # Initialize here, ensuring it always exists
@@ -270,11 +271,18 @@ def main(worker_directory=None):
             }
 
         # --- Event Handling ---
-        mouse_pos = pygame.mouse.get_pos()
+        event_context = (game_state, current_game, current_page,
+                         getattr(current_game, 'input_epoch', None))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
                 game_state = STATE_QUIT
+                break
+            # Inputs queued for an old screen/replay generation do not belong
+            # to its replacement. QUIT above is never discarded.
+            if event_context != (game_state, current_game, current_page,
+                                 getattr(current_game, 'input_epoch', None)):
+                continue
 
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and game_state == STATE_LOAD_SELECT:
                 if load_task is not None:
@@ -287,9 +295,15 @@ def main(worker_directory=None):
                 for button in menu_buttons:
                     result = button.handle_event(event)
                     if result == "Start New Game":
-                        current_game = Game(screen, settings, worker_directory=worker_directory)
-                        game_state = STATE_GAME
-                        print("Starting New Game:", settings.get_setting_summary())
+                        try:
+                            replacement = Game(screen, settings, worker_directory=worker_directory)
+                        except (OSError, ValueError, pygame.error) as exc:
+                            menu_notice = 'Cannot start game: ' + str(exc)
+                        else:
+                            current_game = replacement
+                            game_state = STATE_GAME
+                            menu_notice = ''
+                            print("Starting New Game:", settings.get_setting_summary())
                     elif result == "Load Game":
                         # Transition to Load Select state
                         save_files = _get_save_files()
@@ -438,6 +452,9 @@ def main(worker_directory=None):
             screen.blit(title_text, title_rect)
             for button in menu_buttons:
                 button.draw(screen)
+            if menu_notice:
+                notice = pygame.font.Font(None, 24).render(menu_notice[:95], True, TEXT_COLOR)
+                screen.blit(notice, notice.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 25)))
 
         elif game_state == STATE_SETTINGS:
             screen.fill(WHITE) # Fill white only for settings

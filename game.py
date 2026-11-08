@@ -106,6 +106,7 @@ class Game:
         self.evaluation_in_progress = False
 
     def _cancel_work(self):
+        self.input_epoch = getattr(self, 'input_epoch', 0) + 1
         if getattr(self, 'ai_thinking', False) or self._pending_validation is not None:
             self.telop.hide()
         self.ai_runner.cancel()
@@ -130,13 +131,15 @@ class Game:
             raise ValueError('Validated save settings mismatch')
         if staged is None and move_history_to_load is not None:
             staged = validate_history(settings_data(self.settings), move_history_to_load)
-        if staged is not None and hasattr(self, 'board'):
+        if hasattr(self, 'board'):
             # Prepare even fonts/buttons/AI instances away from the live object.
             # A resource exception must not partly reset an existing game.
             replacement = Game(self.screen, self.settings,
                                worker_directory=self.worker_directory, validated_game=staged)
+            next_epoch = getattr(self, 'input_epoch', 0) + 1
             self.close()
             self.__dict__.update(replacement.__dict__)
+            self.input_epoch = next_epoch
             return
         self._cancel_work()
         self.ai_error = None
@@ -562,7 +565,12 @@ class Game:
         # Handle Game Over buttons if game is over and not in history mode
         if self.game_over and not self.is_history_mode:
             if self.rematch_button.handle_event(event) == "Rematch":
-                self.reset_game()
+                try:
+                    self.reset_game()
+                except (OSError, ValueError, pygame.error) as exc:
+                    logger.warning('Cannot prepare rematch: %s', exc)
+                    self.save_notice = ('Rematch failed. Current game preserved.', pygame.time.get_ticks())
+                    self.needs_redraw = True
                 return None
             if self.menu_button_gameover.handle_event(event) == "Menu":
                 self.close()
@@ -618,28 +626,15 @@ class Game:
              self.needs_redraw = True
              return None # Consume event
 
-        # Handle Gameplay Input
-        if not self.is_history_mode and not self.ai_thinking and self._pending_validation is None and self._is_human_turn() and not self.game_over:
-            # Check if the click was NOT on the checkbox
-            # Need to update clickable_area check if checkbox moved
-            # Re-get mouse pos as event.pos might be old if checkbox handled event
-            current_mouse_pos = pygame.mouse.get_pos()
-            if not self.research_mode_checkbox.clickable_area.collidepoint(current_mouse_pos):
-                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                     row, col = self._get_board_pos_from_mouse(event.pos) # Use event.pos for click location
-                     if row is not None and col is not None:
-                         move_made = self._make_move(row, col)
-                         if move_made:
-                             # --- Force redraw immediately after human move --- #
-                             # print("DEBUG: Human move made, forcing immediate redraw...") # Comment out
-                             self.draw() # Draw the updated board state
-                             pygame.display.flip() # Update the actual screen
-                             # --- End Force redraw --- #
-                             if self.research_mode_enabled:
-                                  # Re-evaluate AFTER the move is made and player switched
-                                  self.evaluation_cache.clear()
-                                  self._evaluate_empty_cells()
-                     return None
+        # One placement per transition/animation; navigation above stays usable.
+        if (self.interaction_state in ('playing', 'unconfirmed') and self._is_human_turn()
+                and event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+            row, col = self._get_board_pos_from_mouse(event.pos)
+            if row is not None and col is not None:
+                self._make_move(row, col)
+                if self.research_mode_enabled:
+                    self._evaluate_empty_cells()
+            return None
         return None # No state change by default
 
     def _start_threat_animation(self, added_threats, removed_threats):
@@ -687,6 +682,23 @@ class Game:
 
         if animation_triggered:
              print(f"DEBUG: Animation started. Total blinking stones: {len(self.animating_stones)}")
+
+    @property
+    def interaction_state(self):
+        """Authoritative input state; UNKNOWN remains a distinct retry state."""
+        if self.is_history_mode:
+            return 'history'
+        if self.game_over:
+            return 'finished'
+        if self._pending_validation is not None:
+            return 'validating'
+        if self._validation_retry is not None:
+            return 'unconfirmed'
+        if self.ai_thinking:
+            return 'thinking'
+        if self.placing_stone_animation or self.animation_blink_count > 0:
+            return 'animating'
+        return 'playing'
 
     def _make_move(self, row, col):
         if self._pending_validation is not None:

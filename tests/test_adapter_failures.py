@@ -1,4 +1,4 @@
-"""Pure mocks preserve child ownership across native attach failures."""
+"""Pure mocks preserve child ownership across attach and cancellation failures."""
 import subprocess
 import pytest
 import ai_async
@@ -55,3 +55,72 @@ def test_bad_memory_config_never_spawns(monkeypatch,limit):
     monkeypatch.setattr(ai_async.subprocess,'Popen',lambda *a,**k:pytest.fail('must validate before spawn'))
     with pytest.raises(ValueError):
         ai_async.AsyncAI(memory_limit_mb=limit)
+
+
+class FakeDirectory:
+    name = 'unused-mock-worker'
+    def __init__(self):
+        self.cleaned = False
+    def cleanup(self):
+        self.cleaned = True
+
+
+class FakeResources:
+    def __init__(self):
+        self.closed = False
+    def close(self):
+        self.closed = True
+
+
+def install_task(runner, process, monkeypatch):
+    # No subprocess, temp directory or cancel marker is created by these tests.
+    monkeypatch.setattr(ai_async.Path, 'touch', lambda *a, **k: None)
+    directory, resources = FakeDirectory(), FakeResources()
+    runner.task = ai_async._Task(process, directory, 'token', (), 0, 0,
+                                 resources=resources)
+    return directory, resources
+
+
+@pytest.mark.parametrize('terminate_error', [False, True])
+def test_cancel_escalates_live_worker_without_waiting(monkeypatch, terminate_error):
+    process = FakeProcess(terminate_error=terminate_error)
+    waits = []
+    original_wait = process.wait
+    def wait(timeout=None):
+        waits.append(timeout)
+        assert process.poll() is not None, 'cancel must never wait for a live worker'
+        return original_wait(timeout)
+    monkeypatch.setattr(process, 'wait', wait)
+    runner = ai_async.AsyncAI()
+    directory, resources = install_task(runner, process, monkeypatch)
+    try:
+        runner.cancel()
+        assert process.terminated and process.killed
+        assert not runner.busy and not runner.retired
+        assert waits == [0]
+        assert directory.cleaned and resources.closed
+    finally:
+        runner.close()
+
+
+def test_failed_kill_stays_owned_and_is_retried_by_reap(monkeypatch):
+    process = FakeProcess(terminate_error=True)
+    kills = []
+    def kill():
+        kills.append(1)
+        if len(kills) == 1:
+            raise OSError('temporary kill failure')
+        process.returncode = -1
+    monkeypatch.setattr(process, 'kill', kill)
+    runner = ai_async.AsyncAI()
+    directory, resources = install_task(runner, process, monkeypatch)
+    try:
+        runner.cancel()
+        assert not runner.busy and len(runner.retired) == 1
+        assert process.poll() is None
+        assert not directory.cleaned and not resources.closed
+        runner.reap()
+        assert len(kills) == 2 and not runner.retired
+        assert directory.cleaned and resources.closed
+    finally:
+        runner.close()
