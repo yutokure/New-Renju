@@ -88,6 +88,9 @@ class Game:
         self._overlay_invalid = []
         self._visual_threats = []
         self._invalid_cells = []
+        self._threat_segments = []
+        self._text_surfaces = {}
+        self._invalid_surface = None
         try:
             self.reset_game(validated_game=validated_game)
         except Exception:
@@ -122,6 +125,19 @@ class Game:
         self._overlay_done_key = None
         self._overlay_invalid = []
         self._visual_key = None
+        self.evaluation_cache = {}
+        self.needs_redraw = True
+
+    def _clear_transient_visuals(self):
+        self.placing_stone_animation = False
+        self.placing_animated_stone_info = None
+        self.animating_stones = []
+        self.animation_blink_count = 0
+        self.show_blink = False
+        self.text_popups = []
+        self.telop.active = False
+        self.invalid_move_pos = None
+        self.needs_redraw = True
 
     def reset_game(self, move_history_to_load=None, *, validated_game=None):
         """Stage replay before touching the current game; never skip bad moves."""
@@ -287,7 +303,7 @@ class Game:
             # Direct placement, assume history is valid here
             if temp_board.is_within_bounds(move[0], move[1]) and temp_board.is_empty(move[0], move[1]):
                 temp_board.grid[move[0], move[1]] = player
-                temp_board.last_move = move # Update last move for reconstruction context
+                temp_board.last_move = tuple(move) # Stable presentation coordinate type
             else:
                 # Should not happen if history was validated on load/during game
                 print(f"Error reconstructing history at index {i}, move {move}")
@@ -360,6 +376,14 @@ class Game:
                     self.screen, LINE_COLOR, (center_x, center_y), max(1, radius) # Ensure radius >= 1
                 )
 
+    def _cached_text(self, font, text, color):
+        key = (id(font), text, color)
+        if key not in self._text_surfaces:
+            if len(self._text_surfaces) >= 512:
+                self._text_surfaces.clear()
+            self._text_surfaces[key] = font.render(text, True, color)
+        return self._text_surfaces[key]
+
     def _draw_stones_and_markers(self):
         """Draws stones, markers, AND evaluation scores (uses current display board and cell_size)."""
         board_to_draw = self._get_current_board_for_display()
@@ -373,8 +397,10 @@ class Game:
         # Cached once per position, not once per animation frame.
         self._refresh_visual_cache()
         if not self.is_history_mode:
-            invalid_surface = pygame.Surface((invalid_marker_size, invalid_marker_size), pygame.SRCALPHA)
-            invalid_surface.fill(INVALID_MOVE_COLOR)
+            if self._invalid_surface is None:
+                self._invalid_surface = pygame.Surface((int(invalid_marker_size), int(invalid_marker_size)), pygame.SRCALPHA)
+                self._invalid_surface.fill(INVALID_MOVE_COLOR)
+            invalid_surface = self._invalid_surface
             for r, c in self._invalid_cells:
                 center_x = self.start_x + c * self.cell_size
                 center_y = self.start_y + r * self.cell_size
@@ -388,7 +414,7 @@ class Game:
 
                 # Check if this is the stone being animated for placing
                 is_placing_animated = False
-                if self.placing_stone_animation and self.placing_animated_stone_info:
+                if not self.is_history_mode and self.placing_stone_animation and self.placing_animated_stone_info:
                     anim_r, anim_c, anim_player = self.placing_animated_stone_info
                     if r == anim_r and c == anim_c:
                         is_placing_animated = True
@@ -466,7 +492,7 @@ class Game:
                             if score > eval_threshold: color = (0, 200, 0) # Green
                             elif score < -eval_threshold: color = (200, 0, 0) # Red
 
-                            score_surf = self.evaluation_font.render(score_str, True, color)
+                            score_surf = self._cached_text(self.evaluation_font, score_str, color)
                             center_x = self.start_x + c * self.cell_size
                             center_y = self.start_y + r * self.cell_size
                             score_rect = score_surf.get_rect(center=(center_x, center_y))
@@ -477,13 +503,13 @@ class Game:
                              # Draw error indicator (e.g., a small red X)
                              center_x = self.start_x + c * self.cell_size
                              center_y = self.start_y + r * self.cell_size
-                             err_surf = self.evaluation_font.render("X", True, RED)
+                             err_surf = self._cached_text(self.evaluation_font, "X", RED)
                              err_rect = err_surf.get_rect(center=(center_x, center_y))
                              self.screen.blit(err_surf, err_rect)
                         # else: score is None (invalid move), draw nothing
 
         # --- Draw Blinking Animation --- #
-        if self.animation_blink_count > 0 and self.show_blink:
+        if not self.is_history_mode and self.animation_blink_count > 0 and self.show_blink:
             stone_radius = self.cell_size // 2 - 2 # Use stone radius
             blink_line_width = 2 # Line thickness for the circle
             for r_anim, c_anim, blink_color in self.animating_stones:
@@ -545,6 +571,8 @@ class Game:
 
     def handle_event(self, event):
         """Handles events for game screen, including history and save buttons."""
+        if event.type == pygame.MOUSEMOTION:
+            self.needs_redraw = True
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.close()
             return STATE_MENU
@@ -583,7 +611,7 @@ class Game:
 
         if prev_clicked:
             self._cancel_work()
-            self.telop.hide()
+            self._clear_transient_visuals()
             if self.display_move_index > 0:
                 self.display_move_index -= 1
                 self.is_history_mode = True # Enter history mode
@@ -594,6 +622,7 @@ class Game:
 
         if next_clicked:
             self._cancel_work()
+            self._clear_transient_visuals()
             if self.display_move_index < len(self.move_history):
                 self.display_move_index += 1
                 self.history_board_cache = None # Invalidate cache
@@ -985,24 +1014,16 @@ class Game:
                 self.invalid_move_pos = None
                 self.needs_redraw = True
 
-        # Call Telop update here, after potential state changes
+        # Redraw the frame in which an overlay becomes inactive as well.
+        telop_was_active = self.telop.active
         telop_is_active = self.telop.update()
-        # Force redraw if telop is animating/visible
-        if telop_is_active:
+        if telop_was_active or telop_is_active:
             self.needs_redraw = True
 
-        # Update Text Popups FIRST (so they animate even during blinking)
-        # Iterate backwards to allow removal during iteration
-        popup_updated = False
-        for i in range(len(self.text_popups) - 1, -1, -1):
-            popup = self.text_popups[i]
-            if popup.update(): # update returns True if still active
-                 popup_updated = True
-            else: # update returned False, popup duration passed
-                self.text_popups.pop(i)
-        # If any popup was updated (is still active), force redraw
-        if popup_updated:
-             self.needs_redraw = True
+        # Exactly once per popup; removal must clear its previous pixels.
+        if self.text_popups:
+            self.text_popups = [popup for popup in self.text_popups if popup.update()]
+            self.needs_redraw = True
 
         # --- Update Placing Animation State --- #
         placing_anim_active = False
@@ -1014,6 +1035,7 @@ class Game:
                 self.placing_stone_animation = False
                 self.placing_animated_stone_info = None
                 placing_anim_active = False # Animation ended
+                self.needs_redraw = True
                 print("DEBUG: Placing animation finished.")
             else:
                 self.needs_redraw = True # Keep redrawing during animation
@@ -1033,19 +1055,14 @@ class Game:
                 self.animation_blink_count = 0
                 self.animating_stones = []
                 self.show_blink = False
+                is_animating = False
+                self.needs_redraw = True
                 print("DEBUG: Animation finished.") # Debug
             else:
                 # Determine if blink should be shown (even indices: ON, odd indices: OFF)
                 self.show_blink = (blink_state_index % 2 == 0)
                 self.needs_redraw = True # Need to redraw during animation
         # --- End Blinking Animation Update --- #
-
-        # Update Text Popups
-        # Iterate backwards to allow removal during iteration
-        for i in range(len(self.text_popups) - 1, -1, -1):
-            popup = self.text_popups[i]
-            if not popup.update(): # update returns False if duration passed
-                self.text_popups.pop(i)
 
         self.ai_runner.reap()
         self.analysis_runner.reap()
@@ -1141,6 +1158,7 @@ class Game:
         if key != self._visual_key:
             self._visual_key = key
             self._visual_threats = board.find_threats(BOARD_BLACK) + board.find_threats(BOARD_WHITE)
+            self._cache_threat_segments()
             # Opening geometry is cheap. Exhaustive recursive forbidden
             # adjudication is detached, never part of an animation frame.
             self._invalid_cells = [tuple(map(int, p)) for p in board.get_empty_cells()
@@ -1148,19 +1166,8 @@ class Game:
         if self._overlay_done_key == key:
             self._invalid_cells = list(set(self._invalid_cells) | set(self._overlay_invalid))
 
-    def _draw_threat_and_win_lines(self):
-        """Draws threat lines and the win line (uses self.cell_size)."""
-        board_to_draw = self._get_current_board_for_display()
-        current_win_line = self._get_current_win_line_for_display()
-
-        self._refresh_visual_cache()
+    def _cache_threat_segments(self):
         all_threats = self._visual_threats
-
-        if not all_threats and not current_win_line:
-            return
-
-        # Use self.cell_size for coordinate calculations
-        # --- Threat Drawing Logic --- #
         # 1. Map threats to coordinates
         threat_map = defaultdict(list)
         for threat_info in all_threats:
@@ -1180,7 +1187,8 @@ class Game:
                 direction_categories = sum([has_horizontal, has_vertical, has_diagonal1, has_diagonal2])
                 if direction_categories >= 2:
                     intersection_points.add(pos)
-        # 3. Draw threat lines
+        # 3. Build line geometry once for this position
+        self._threat_segments = []
         for threat_info in all_threats:
             # Unpack threat info, including the stone coordinates (ignored for line drawing)
             threat_type, start_pos_tuple, end_pos_tuple, direction, _ = threat_info
@@ -1199,7 +1207,22 @@ class Game:
                 if threat_type == THREAT_OPEN_THREE: threat_color = (0, 150, 255)
                 elif threat_type == THREAT_CLOSED_FOUR: threat_color = (255, 165, 0)
                 elif threat_type == THREAT_OPEN_FOUR: threat_color = (255, 69, 0)
-            pygame.draw.line(self.screen, threat_color, start_pos_screen, end_pos_screen, THREAT_LINE_WIDTH)
+            self._threat_segments.append((threat_color, start_pos_screen, end_pos_screen))
+
+
+    def _draw_threat_and_win_lines(self):
+        """Draws threat lines and the win line (uses self.cell_size)."""
+        board_to_draw = self._get_current_board_for_display()
+        current_win_line = self._get_current_win_line_for_display()
+
+        self._refresh_visual_cache()
+        all_threats = self._visual_threats
+
+        if not all_threats and not current_win_line:
+            return
+
+        for color, start, end in self._threat_segments:
+            pygame.draw.line(self.screen, color, start, end, THREAT_LINE_WIDTH)
 
         # --- 勝利ラインの描画 (using self.cell_size) --- #
         if current_win_line:
@@ -1237,7 +1260,7 @@ class Game:
             status_text_str = "AI error (Menu to retry)" if self.ai_error else f"Turn: {turn_str}"
             current_player_at_index = self.current_player
 
-        status_text = self.font.render(status_text_str, True, TEXT_COLOR)
+        status_text = self._cached_text(self.font, status_text_str, TEXT_COLOR)
         status_rect = status_text.get_rect(center=(SCREEN_WIDTH // 2, 30))
         # Background rectangle centered with the text
         bg_rect = status_rect.inflate(60, 10) # Increased horizontal padding
@@ -1262,8 +1285,10 @@ class Game:
 
     def _draw_game_over_overlay(self):
         """Draws the semi-transparent overlay and game over message/buttons."""
-        overlay_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay_surface.fill(GAMEOVER_OVERLAY_COLOR)
+        if not hasattr(self, '_gameover_surface'):
+            self._gameover_surface = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            self._gameover_surface.fill(GAMEOVER_OVERLAY_COLOR)
+        overlay_surface = self._gameover_surface
         self.screen.blit(overlay_surface, (0, 0))
 
         # Determine message
@@ -1274,7 +1299,7 @@ class Game:
             message = f"{winner_str}"
 
         # Render message
-        message_render = self.game_over_font.render(message, True, WHITE)
+        message_render = self._cached_text(self.game_over_font, message, WHITE)
         message_rect = message_render.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50))
         self.screen.blit(message_render, message_rect)
 
@@ -1292,6 +1317,8 @@ class Game:
         key = position_key(board, player, count)
         if self._analysis_key == key:
             return
+        if self._overlay_key != self._overlay_done_key:
+            self._overlay_key = None
         try:
             self.analysis_runner.start(board, player, count, 'hard', budget=1.5, kind='analysis')
         except (OSError, ValueError):
@@ -1306,7 +1333,7 @@ class Game:
         self.needs_redraw = True
 
     def _queue_legality_overlay(self):
-        if self._pending_validation is not None or self._validation_retry is not None or self.analysis_runner.busy or self.is_history_mode or self.game_over or not self._is_human_turn():
+        if self._pending_validation is not None or self._validation_retry is not None or self.research_mode_enabled or self.analysis_runner.busy or self.is_history_mode or self.game_over or not self._is_human_turn():
             return
         count = len(self.move_history)
         key = position_key(self.board, self.current_player, count)
@@ -1378,20 +1405,13 @@ class Game:
             # Game Over overlay (only if game is actually over and not in history mode)
             if self.game_over and not self.is_history_mode:
                 self._draw_game_over_overlay()
-                # Game over buttons are drawn within the overlay function now or kept separate?
-                # Keep separate for consistency:
-                self.rematch_button.draw(self.screen)
-                self.menu_button_gameover.draw(self.screen)
 
             if self.save_notice:
                 message, _ = self.save_notice
-                notice = self.small_font.render(message, True, TEXT_COLOR)
+                notice = self._cached_text(self.small_font, message, TEXT_COLOR)
                 rect = notice.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT - 12))
                 self.screen.blit(notice, rect)
+            self.telop.draw(self.screen)
             self.needs_redraw = False
-
-        # Draw Telop last (outside the needs_redraw block)
-        # Telop draw itself checks if active
-        self.telop.draw(self.screen)
 
         # No need to flip here, handled in main loop after all updates/draws 
